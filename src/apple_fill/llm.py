@@ -53,11 +53,20 @@ def _endpoint() -> tuple[str, str]:
     return url, model
 
 
-def chat(messages: list[dict[str, str]]) -> str:
-    url, model = _endpoint()
+def chat(
+    messages: list[dict[str, str]],
+    *,
+    url: str | None = None,
+    model: str | None = None,
+    api_key: str | None = None,
+) -> str:
+    if not url or not model:
+        url, model = _endpoint()
+        if api_key is None:
+            api_key = os.environ.get("APPLE_FILL_LLM_API_KEY", "").strip()
     body: dict[str, Any] = {"model": model, "temperature": 0, "messages": messages}
     headers = {"Content-Type": "application/json"}
-    api_key = os.environ.get("APPLE_FILL_LLM_API_KEY", "").strip()
+    api_key = (api_key or "").strip()
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     request = urllib.request.Request(
@@ -175,8 +184,18 @@ def _user_payload(documents, product_id: str) -> str:
     )
 
 
-def extract_with_llm(paths: list[Path], product_id: str):
-    _url, model = _endpoint()
+def extract_with_llm(
+    paths: list[Path],
+    product_id: str,
+    *,
+    url: str | None = None,
+    model: str | None = None,
+    api_key: str | None = None,
+):
+    if not url or not model:
+        url, model = _endpoint()
+        if api_key is None:
+            api_key = os.environ.get("APPLE_FILL_LLM_API_KEY", "").strip()
     documents = load_documents(paths)
     cached = load_cached_output(documents, model)
     if cached is not None:
@@ -186,13 +205,13 @@ def extract_with_llm(paths: list[Path], product_id: str):
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": _user_payload(documents, product_id)},
     ]
-    output = parse_model_json(chat(messages))
+    output = parse_model_json(chat(messages, url=url, model=model, api_key=api_key))
     try:
         product = model_output_to_product(output, documents, product_id=product_id, model=model)
     except ExtractError as first:
         messages.append({"role": "assistant", "content": json.dumps(output, ensure_ascii=False)})
         messages.append({"role": "user", "content": "这些字段没有通过校验，请只修正 JSON：\n" + "\n".join(first.errors)})
-        output = parse_model_json(chat(messages))
+        output = parse_model_json(chat(messages, url=url, model=model, api_key=api_key))
         product = model_output_to_product(output, documents, product_id=product_id, model=model)
     store_cached_output(documents, model, output)
     return product

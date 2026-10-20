@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apple Fill</title>
+<link rel="stylesheet" href="theme.css">
+</head>
+<body class="desk" data-state="empty">
+<header class="topbar">
+  <div class="app-name">Apple Fill</div>
+  <span class="case-name" contenteditable="true" spellcheck="false" role="textbox" aria-label="这一单的名称">未命名的一单</span>
+  <button class="btn-quiet new-case" type="button" id="newCase">新的一单</button>
+</header>
+
+<div class="split">
+  <section class="site">
+    <form class="omnibox" id="omnibox">
+      <svg class="lock" id="lock" viewBox="0 0 16 16" aria-hidden="true">
+        <rect x="3.25" y="7.25" width="9.5" height="6.5" rx="1" fill="none" stroke="currentColor" stroke-width="1"></rect>
+        <path id="shackle" d="M5.25 7.25V5.1a2.75 2.75 0 0 1 5.5 0V7.25" fill="none" stroke="currentColor" stroke-width="1"></path>
+      </svg>
+      <input id="url" type="text" placeholder="输入网址" autocomplete="off" spellcheck="false" aria-label="网址">
+      <button class="btn-open" type="submit">打开</button>
+    </form>
+    <div class="viewport">
+      <div class="blank-page">输入网址，开始新的一单</div>
+      <iframe id="frame" class="frame" title="网站" hidden></iframe>
+    </div>
+  </section>
+
+  <aside class="panel" id="panel">
+    <div class="dropzone" id="dropzone">把资料放到这里</div>
+    <div class="files-wrap" id="filesWrap">
+      <div class="preview-only">
+        <div class="files">
+          <div class="file"><span class="name" title="产品说明书_V2_final.pdf">产品说明…V2_final.pdf</span><button class="x" type="button" aria-label="移除">×</button></div>
+          <div class="file"><span class="name" title="检测报告.pdf">检测报告.pdf</span><button class="x" type="button" aria-label="移除">×</button></div>
+          <div class="file"><span class="name" title="铭牌照片.jpg">铭牌照片.jpg</span><button class="x" type="button" aria-label="移除">×</button></div>
+        </div>
+      </div>
+      <div id="fileList"></div>
+      <div class="add-more" id="addMore">拖入更多文件，或点此选择</div>
+      <input id="fileInput" type="file" multiple hidden>
+    </div>
+
+    <div class="status" id="status"><span class="dot"></span><span id="statusText">先放入资料</span></div>
+    <div id="importer" hidden>
+      <textarea id="adapterText" aria-label="适配包" placeholder="粘贴适配包" spellcheck="false"></textarea>
+      <div class="add-more" id="pickAdapter">或选择 adapter.yaml</div>
+      <input id="adapterInput" type="file" accept=".yaml,.yml,.txt" hidden>
+      <button class="btn-quiet" type="button" id="doImport">导入</button>
+    </div>
+
+    <div class="blanks" id="blanks">
+      <div class="title">留空的项</div>
+      <div class="blank"><span class="dot"></span><span class="field">型号</span><span class="reason">资料里没有</span></div>
+      <div class="blank"><span class="dot"></span><span class="field">额定电压</span><span class="reason">两份文件不一致</span></div>
+      <div class="blank"><span class="dot"></span><span class="field">认证类别</span><span class="reason">只能推断，原文没有写</span></div>
+    </div>
+
+    <p class="hint" id="hint">请在左边检查，确认无误后亲手点提交。点过提交、看过结果，再点「完成」。</p>
+
+    <button class="btn-primary" type="button" id="go" disabled>抽出并填写</button>
+
+    <div class="footer">
+      <button class="btn-quiet" type="button" id="archive" disabled>存档</button>
+      <button class="btn-quiet" type="button" id="remove" disabled>删除</button>
+      <span class="saved" id="saved" hidden>已存到 runs\2026-10-20_xxx</span>
+      <div class="settings-anchor">
+        <div class="llm-sheet" id="llmSheet" hidden role="dialog" aria-label="抽取设置">
+          <label>抽取方式
+            <select id="llmChoice" aria-label="抽取方式">
+              <option value="labels">按标签抽取，不用大模型</option>
+              <option value="deepseek" data-model="deepseek-chat">DeepSeek</option>
+              <option value="qwen" data-model="qwen-plus">通义千问</option>
+              <option value="glm" data-model="glm-4-flash">智谱 GLM</option>
+              <option value="kimi" data-model="moonshot-v1-8k">Kimi</option>
+              <option value="openai" data-model="gpt-4o-mini">OpenAI</option>
+              <option value="custom">自己的接口</option>
+            </select>
+          </label>
+          <label id="llmUrlRow" hidden>接口地址
+            <input id="llmUrl" type="text" spellcheck="false" autocomplete="off" placeholder="https://…/chat/completions" aria-label="接口地址">
+          </label>
+          <label id="llmModelRow">模型名
+            <input id="llmModel" type="text" spellcheck="false" autocomplete="off" aria-label="模型名">
+          </label>
+          <label id="llmKeyRow">密钥
+            <input id="llmKey" type="password" autocomplete="off" placeholder="留空则保持已保存的密钥" aria-label="密钥">
+          </label>
+          <p class="mute llm-note" id="llmNote">按资料里的标签抄写，不调用大模型。</p>
+          <button class="btn-open" type="button" id="llmSave">保存</button>
+        </div>
+        <button class="btn-quiet settings" type="button" id="settings" aria-expanded="false" aria-controls="llmSheet">设置</button>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+(function () {
+  var KNOWN = { empty: 1, files: 1, noadapter: 1, ready: 1, done: 1 };
+  var params = new URLSearchParams(location.search);
+  var state = params.get("state") || "empty";
+  if (!KNOWN[state]) state = "empty";
+
+  var statusEl = document.getElementById("status");
+  var statusText = document.getElementById("statusText");
+  var go = document.getElementById("go");
+  var archive = document.getElementById("archive");
+  var remove = document.getElementById("remove");
+  var saved = document.getElementById("saved");
+  var url = document.getElementById("url");
+  var omnibox = document.getElementById("omnibox");
+  var shackle = document.getElementById("shackle");
+  var frame = document.getElementById("frame");
+  var caseName = document.querySelector(".case-name");
+  var importer = document.getElementById("importer");
+  var fileList = document.getElementById("fileList");
+  var fileInput = document.getElementById("fileInput");
+  var live = !params.get("state");
+  var files = [];
+  var adapters = [];
+  var extracted = null;
+  var siteUrl = "";
+  var armedTimer = 0;
+  var savedTimer = 0;
+  var API = location.protocol === "file:" ? "http://127.0.0.1:8780" : "";
+  var llmSheet = document.getElementById("llmSheet");
+  var llmChoice = document.getElementById("llmChoice");
+  var llmUrlRow = document.getElementById("llmUrlRow");
+  var llmModelRow = document.getElementById("llmModelRow");
+  var llmKeyRow = document.getElementById("llmKeyRow");
+  var llmUrl = document.getElementById("llmUrl");
+  var llmModel = document.getElementById("llmModel");
+  var llmKey = document.getElementById("llmKey");
+  var llmNote = document.getElementById("llmNote");
+  var settingsBtn = document.getElementById("settings");
+  var llmState = { models: {}, keySlots: [], customUrl: "", fromEnv: false, preset: "", model: "", mode: "labels" };
+
+  function setSecure(on) {
+    omnibox.classList.toggle("secure", on);
+    shackle.setAttribute("d", on
+      ? "M5.25 7.25V5.1a2.75 2.75 0 0 1 5.5 0V7.25"
+      : "M5.25 7.25V5.1a2.75 2.75 0 0 1 4.4-2.2");
+  }
+
+  function clearFrame() {
+    siteUrl = "";
+    document.body.dataset.site = "closed";
+    frame.hidden = true;
+    frame.removeAttribute("src");
+  }
+
+  function showFrame(href) {
+    siteUrl = href;
+    document.body.dataset.site = "open";
+    frame.hidden = false;
+    if (frame.getAttribute("src") !== href) frame.src = href;
+  }
+
+  function apply(next) {
+    state = next;
+    document.body.dataset.state = next;
+    statusEl.className = "status";
+    go.className = "btn-primary";
+    go.disabled = true;
+    go.textContent = "抽出并填写";
+    archive.disabled = next === "empty";
+    remove.disabled = next === "empty";
+    disarm();
+    clearFrame();
+
+    if (next === "empty" || next === "files") {
+      url.value = "";
+      setSecure(false);
+      statusText.textContent = next === "empty" ? "先放入资料" : "先在左边打开网站并登录";
+      return;
+    }
+    url.value = "https://certs.example/apply";
+    setSecure(true);
+    if (next === "noadapter") {
+      statusEl.classList.add("warn");
+      statusText.innerHTML = "这个网站还没有适配包<a href=\"#import\">去导入</a>";
+      return;
+    }
+    statusEl.classList.add("ready");
+    if (next === "ready") {
+      statusText.textContent = "将填入：某站申报";
+      go.disabled = false;
+      return;
+    }
+    statusText.textContent = "已填 9 项，留空 3 项";
+    go.disabled = false;
+    go.classList.add("outline");
+    go.textContent = "完成";
+  }
+
+  function disarm() {
+    clearTimeout(armedTimer);
+    remove.dataset.armed = "";
+    remove.textContent = "删除";
+  }
+
+  function escapeText(value) {
+    return String(value).replace(/[&<>]/g, function (ch) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[ch];
+    });
+  }
+
+  function shortName(name) {
+    if (name.length <= 24) return name;
+    return name.slice(0, 10) + "…" + name.slice(-10);
+  }
+
+  function currentAdapter() {
+    var host = "";
+    try { host = new URL(siteUrl).hostname.toLowerCase(); } catch (e) { return null; }
+    var user = adapters.filter(function (item) { return item.source === "user"; });
+    var rest = adapters.filter(function (item) { return item.source !== "user"; });
+    var all = user.concat(rest);
+    for (var i = 0; i < all.length; i++) {
+      var hosts = (all[i].allowedHosts || []).map(function (item) { return String(item).toLowerCase(); });
+      if (hosts.indexOf(host) >= 0) return all[i];
+    }
+    return null;
+  }
+
+  function renderFiles() {
+    if (!files.length) {
+      fileList.innerHTML = "";
+      return;
+    }
+    var html = '<div class="files">';
+    files.forEach(function (file, index) {
+      html += '<div class="file"><span class="name" title="' + escapeText(file.name).replace(/"/g, "&quot;") + '">'
+        + escapeText(shortName(file.name))
+        + '</span><button class="x" type="button" data-index="' + index + '" aria-label="移除">×</button></div>';
+    });
+    fileList.innerHTML = html + "</div>";
+  }
+
+  function renderBlanks(items) {
+    var box = document.getElementById("blanks");
+    if (!items.length) {
+      box.innerHTML = "";
+      document.body.classList.remove("has-blanks");
+      return;
+    }
+    var html = '<div class="title">留空的项</div>';
+    items.forEach(function (item) {
+      html += '<div class="blank"><span class="dot"></span><span class="field">' + escapeText(item.field)
+        + '</span><span class="reason">' + escapeText(item.reason) + "</span></div>";
+    });
+    box.innerHTML = html;
+    document.body.classList.add("has-blanks");
+  }
+
+  function paintLive() {
+    var hasFiles = files.length > 0;
+    var open = !!siteUrl;
+    var adapter = hasFiles && open ? currentAdapter() : null;
+    var next = "empty";
+    if (hasFiles && !open) next = "files";
+    else if (hasFiles && open && !adapter) next = "noadapter";
+    else if (hasFiles && open && adapter) next = "ready";
+    state = next;
+    document.body.dataset.state = next;
+    document.body.dataset.site = open ? "open" : "closed";
+    if (next !== "noadapter") importer.hidden = true;
+    renderFiles();
+    statusEl.className = "status";
+    go.className = "btn-primary";
+    go.disabled = true;
+    go.textContent = "抽出并填写";
+    archive.disabled = !hasFiles;
+    remove.disabled = !hasFiles;
+    if (!hasFiles) {
+      statusText.textContent = "先放入资料";
+      return;
+    }
+    if (!open) {
+      statusText.textContent = "先在左边打开网站并登录";
+      return;
+    }
+    if (!adapter) {
+      statusEl.classList.add("warn");
+      statusText.innerHTML = '这个网站还没有适配包<a href="#generate">根据这一页生成</a>';
+      return;
+    }
+    statusEl.classList.add("ready");
+    if (extracted) {
+      statusText.textContent = "已抽出 " + extracted.sourced + " 项，留空 " + (extracted.blanks || []).length + " 项";
+      go.disabled = false;
+      go.classList.add("outline");
+      return;
+    }
+    statusText.textContent = "将填入：" + adapter.id;
+    go.disabled = false;
+  }
+
+  function resetCase() {
+    files = [];
+    extracted = null;
+    document.body.classList.remove("has-blanks");
+    caseName.textContent = "未命名的一单";
+    importer.hidden = true;
+    if (live) {
+      clearFrame();
+      url.value = "";
+      setSecure(false);
+      paintLive();
+      return;
+    }
+    apply("empty");
+  }
+
+  var ACCEPT_SUFFIX = {
+    ".pdf": 1, ".doc": 1, ".docx": 1, ".xls": 1, ".xlsx": 1, ".xlsm": 1,
+    ".txt": 1, ".jpg": 1, ".jpeg": 1
+  };
+
+  function fileSuffix(name) {
+    var text = String(name || "");
+    var index = text.lastIndexOf(".");
+    if (index <= 0) return "";
+    return text.slice(index).toLowerCase();
+  }
+
+  function addFiles(list) {
+    if (!list || !list.length) return;
+    document.body.classList.add("live");
+    live = true;
+    var rejected = [];
+    for (var i = 0; i < list.length; i++) {
+      if (ACCEPT_SUFFIX[fileSuffix(list[i].name)]) files.push(list[i]);
+      else rejected.push(list[i]);
+    }
+    extracted = null;
+    document.body.classList.remove("has-blanks");
+    paintLive();
+    if (!rejected.length) return;
+    var bits = rejected.map(function (file) {
+      return (fileSuffix(file.name) || "无后缀") + "：" + file.name;
+    });
+    statusEl.className = "status bad";
+    statusText.textContent = "读不了 " + bits.join("、") + "。请先另存为 PDF、Word、Excel、txt 或 JPEG，再放进来。";
+  }
+
+  function parseAdapter(text) {
+    function grab(key) {
+      var match = new RegExp("^" + key + ":\\s*(.+)$", "m").exec(text);
+      if (!match) return "";
+      return match[1].trim().replace(/^["']|["']$/g, "");
+    }
+    function hostsOf() {
+      var inline = /^allowedHosts:[ \t]*(\S.*)$/m.exec(text);
+      if (inline) {
+        return inline[1].replace(/[\[\]]/g, "").split(",").map(function (item) {
+          return item.trim().replace(/^["']|["']$/g, "");
+        }).filter(Boolean);
+      }
+      var lines = text.split(/\n/);
+      var on = false;
+      var hosts = [];
+      for (var i = 0; i < lines.length; i++) {
+        if (/^allowedHosts:\s*$/.test(lines[i])) { on = true; continue; }
+        if (!on) continue;
+        var item = /^\s+-\s+(.+)$/.exec(lines[i]);
+        if (item) { hosts.push(item[1].trim().replace(/^["']|["']$/g, "")); continue; }
+        if (/^\S/.test(lines[i])) break;
+      }
+      return hosts;
+    }
+    var id = grab("id");
+    var version = parseInt(grab("version"), 10);
+    var entry = grab("entryUrl");
+    var hosts = hostsOf();
+    if (!id || !version || !entry || !hosts.length) return { error: "适配包缺少名字、版本、入口或白名单" };
+    if (entry.indexOf("{{baseUrl}}") >= 0) return { error: "正式站点请写成完整入口地址" };
+    var actions = text.match(/^\s*action:\s*(\S+)\s*$/gm) || [];
+    if (!actions.length) return { error: "适配包没有步骤" };
+    var allowed = { goto: 1, fill: 1, select: 1, upload: 1, click: 1, wait_for: 1 };
+    for (var i = 0; i < actions.length; i++) {
+      var name = actions[i].replace(/^\s*action:\s*/, "").trim();
+      if (!allowed[name]) return { error: "步骤里有不能用的动作" };
+    }
+    try {
+      var host = new URL(entry).hostname.toLowerCase();
+      var listed = hosts.some(function (item) { return item.toLowerCase() === host; });
+      if (!listed) return { error: "入口地址的主机不在白名单里" };
+    } catch (e) {
+      return { error: "入口地址打不开" };
+    }
+    return { id: id, version: version, allowedHosts: hosts, entryUrl: entry, source: "user" };
+  }
+
+  function remember(brief) {
+    adapters = adapters.filter(function (item) {
+      return !(item.id === brief.id && Number(item.version) === Number(brief.version) && item.source === brief.source);
+    });
+    adapters.push(brief);
+    try { localStorage.setItem("apple-fill-adapters", JSON.stringify(adapters)); } catch (e) {}
+  }
+
+  function showSaved(text) {
+    saved.textContent = text;
+    saved.hidden = false;
+    saved.classList.remove("is-gone");
+    clearTimeout(savedTimer);
+    savedTimer = setTimeout(function () { saved.classList.add("is-gone"); }, 3000);
+  }
+
+  document.getElementById("newCase").addEventListener("click", resetCase);
+
+  function openTypedUrl() {
+    var raw = url.value.trim();
+    if (!raw) return;
+    if (!/^https?:\/\//i.test(raw)) raw = "https://" + raw;
+    var parsed;
+    try { parsed = new URL(raw); } catch (e) { parsed = null; }
+    if (!parsed || (parsed.protocol !== "http:" && parsed.protocol !== "https:")) {
+      statusEl.className = "status bad";
+      statusText.textContent = "这个网址打不开";
+      return;
+    }
+    document.body.classList.add("live");
+    live = true;
+    extracted = null;
+    document.body.classList.remove("has-blanks");
+    url.value = parsed.href;
+    setSecure(parsed.protocol === "https:");
+    showFrame(parsed.href);
+    paintLive();
+  }
+
+  function extractLive() {
+    go.disabled = true;
+    go.className = "btn-primary busy";
+    go.textContent = "正在读取文件…";
+    var body = new FormData();
+    body.append("productId", caseName.textContent.trim() || "未命名的一单");
+    files.forEach(function (file) { body.append("files", file, file.name); });
+    fetch(API + "/api/extract", { method: "POST", body: body })
+      .then(function (res) {
+        var type = res.headers.get("content-type") || "";
+        if (type.indexOf("application/json") < 0) throw new Error("fetch-fallback");
+        return res.json().then(function (data) {
+          if (!res.ok) throw new Error(data.error || "没有抽出");
+          return data;
+        });
+      })
+      .then(function (data) {
+        extracted = data;
+        renderBlanks(data.blanks || []);
+        paintLive();
+      })
+      .catch(function (err) {
+        paintLive();
+        statusEl.className = "status bad";
+        var message = err && err.message ? err.message : "";
+        statusText.textContent = /fetch|network|failed/i.test(message) ? "本机程序没有开，还不能抽出" : (message || "没有抽出");
+      });
+  }
+
+  omnibox.addEventListener("submit", function (event) {
+    event.preventDefault();
+    openTypedUrl();
+  });
+
+  go.addEventListener("click", function () {
+    if (state !== "ready" || go.disabled) return;
+    if (live) {
+      extractLive();
+      return;
+    }
+    go.disabled = true;
+    go.classList.add("busy");
+    go.textContent = "正在填写第 3/12 项…";
+    setTimeout(function () { apply("done"); }, 700);
+  });
+
+  archive.addEventListener("click", function () {
+    if (archive.disabled) return;
+    if (live) {
+      showSaved(extracted && extracted.run ? "已存到 " + extracted.run : "先抽出再存档");
+      return;
+    }
+    saved.textContent = "已存到 runs\\2026-10-20_xxx";
+    saved.hidden = false;
+    saved.classList.remove("is-gone");
+    clearTimeout(savedTimer);
+    savedTimer = setTimeout(function () { saved.classList.add("is-gone"); }, 3000);
+  });
+
+  remove.addEventListener("click", function () {
+    if (remove.disabled) return;
+    if (remove.dataset.armed === "1") {
+      if (live) {
+        files = [];
+        extracted = null;
+        document.body.classList.remove("has-blanks");
+        paintLive();
+      } else {
+        apply("empty");
+        caseName.textContent = "未命名的一单";
+      }
+      return;
+    }
+    remove.dataset.armed = "1";
+    remove.textContent = "再点一次确认";
+    clearTimeout(armedTimer);
+    armedTimer = setTimeout(disarm, 3000);
+  });
+
+  caseName.addEventListener("blur", function () {
+    if (!caseName.textContent.trim()) caseName.textContent = "未命名的一单";
+  });
+  caseName.addEventListener("keydown", function (event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      caseName.blur();
+    }
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+    var key = event.key.toLowerCase();
+    if (key === "l") {
+      event.preventDefault();
+      url.focus();
+      url.select();
+    } else if (key === "n") {
+      event.preventDefault();
+      resetCase();
+    }
+  });
+
+  function readControls() {
+    var doc;
+    try { doc = frame.contentDocument; } catch (e) { doc = null; }
+    if (!doc) return null;
+    var nodes = doc.querySelectorAll("input, textarea, select");
+    var controls = [];
+    for (var i = 0; i < nodes.length; i++) {
+      var node = nodes[i];
+      var type = (node.type || node.tagName || "").toLowerCase();
+      var label = node.getAttribute("aria-label") || "";
+      if (!label && node.id) {
+        var owner = doc.querySelector('label[for="' + node.id + '"]');
+        if (owner) label = owner.innerText || "";
+      }
+      if (!label && node.closest) {
+        var wrap = node.closest("label");
+        if (wrap) label = wrap.innerText || "";
+      }
+      if (!label) label = node.getAttribute("placeholder") || "";
+      controls.push({ name: node.getAttribute("name") || "", label: label.trim(), type: type });
+    }
+    return controls;
+  }
+
+  function generateFromPage() {
+    if (!siteUrl) return;
+    var controls = readControls();
+    var payload = { url: siteUrl };
+    if (controls && controls.length) payload.controls = controls;
+    statusEl.className = "status";
+    statusText.textContent = "正在看这一页的格子…";
+    fetch(API + "/api/adapters/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).then(function (res) {
+      var type = res.headers.get("content-type") || "";
+      if (type.indexOf("application/json") < 0) throw new Error("fetch-fallback");
+      return res.json().then(function (data) {
+        if (!res.ok) throw new Error(data.error || "没有生成");
+        return data;
+      });
+    }).then(function (brief) {
+      remember(brief);
+      importer.hidden = true;
+      paintLive();
+    }).catch(function (err) {
+      var message = err && err.message ? err.message : "";
+      statusEl.className = "status bad";
+      if (/fetch|network|failed/i.test(message)) {
+        statusText.innerHTML = '本机程序没有开，还不能生成<a href="#import">已有适配包</a>';
+        return;
+      }
+      statusText.textContent = message || "没有生成";
+    });
+  }
+
+  statusEl.addEventListener("click", function (event) {
+    var link = event.target.closest("a");
+    if (!link) return;
+    event.preventDefault();
+    if (!live) return;
+    if (link.getAttribute("href") === "#generate") {
+      generateFromPage();
+      return;
+    }
+    importer.hidden = false;
+  });
+
+  fileInput.addEventListener("change", function () {
+    addFiles(fileInput.files);
+    fileInput.value = "";
+  });
+  document.getElementById("addMore").addEventListener("click", function () {
+    if (live) fileInput.click();
+  });
+  document.getElementById("dropzone").addEventListener("click", function () {
+    if (live) fileInput.click();
+  });
+  fileList.addEventListener("click", function (event) {
+    var button = event.target.closest(".x");
+    if (!button) return;
+    files.splice(Number(button.dataset.index), 1);
+    extracted = null;
+    document.body.classList.remove("has-blanks");
+    paintLive();
+  });
+
+  ["dragover", "drop"].forEach(function (name) {
+    document.addEventListener(name, function (event) {
+      if (!event.dataTransfer) return;
+      event.preventDefault();
+    });
+  });
+  var dropzone = document.getElementById("dropzone");
+  dropzone.addEventListener("dragover", function () { dropzone.classList.add("over"); });
+  dropzone.addEventListener("dragleave", function () { dropzone.classList.remove("over"); });
+  dropzone.addEventListener("drop", function (event) {
+    event.stopPropagation();
+    dropzone.classList.remove("over");
+    addFiles(event.dataTransfer.files);
+  });
+  document.getElementById("panel").addEventListener("drop", function (event) {
+    if (event.target.closest("#dropzone")) return;
+    addFiles(event.dataTransfer.files);
+  });
+
+  document.getElementById("pickAdapter").addEventListener("click", function () {
+    document.getElementById("adapterInput").click();
+  });
+  document.getElementById("adapterInput").addEventListener("change", function (event) {
+    var file = event.target.files && event.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () { document.getElementById("adapterText").value = String(reader.result || ""); };
+    reader.readAsText(file);
+  });
+  document.getElementById("doImport").addEventListener("click", function () {
+    var text = document.getElementById("adapterText").value.trim();
+    if (!text) return;
+    fetch(API + "/api/adapters", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+      body: text
+    }).then(function (res) {
+      var type = res.headers.get("content-type") || "";
+      if (type.indexOf("application/json") < 0) throw new Error("fetch-fallback");
+      return res.json().then(function (data) {
+        if (!res.ok) throw new Error(data.error || "没有导入");
+        return data;
+      });
+    }).then(function (brief) {
+      remember(brief);
+      importer.hidden = true;
+      document.getElementById("adapterText").value = "";
+      paintLive();
+    }).catch(function (err) {
+      var message = err && err.message ? err.message : "";
+      if (/fetch|network|failed/i.test(message)) {
+        var brief = parseAdapter(text);
+        if (brief.error) {
+          statusEl.className = "status bad";
+          statusText.textContent = brief.error;
+          return;
+        }
+        remember(brief);
+        importer.hidden = true;
+        document.getElementById("adapterText").value = "";
+        paintLive();
+        return;
+      }
+      statusEl.className = "status bad";
+      statusText.textContent = message || "没有导入";
+    });
+  });
+
+  function presetModel(id) {
+    var option = llmChoice.querySelector('option[value="' + id + '"]');
+    return option ? (option.getAttribute("data-model") || "") : "";
+  }
+
+  function syncLlmFields() {
+    var choice = llmChoice.value;
+    var labelsOnly = choice === "labels";
+    llmUrlRow.hidden = choice !== "custom";
+    llmModelRow.hidden = labelsOnly;
+    llmKeyRow.hidden = labelsOnly;
+  }
+
+  function closeLlm() {
+    llmSheet.hidden = true;
+    settingsBtn.setAttribute("aria-expanded", "false");
+  }
+
+  function paintLlmNote() {
+    var choice = llmChoice.value;
+    var slots = llmState.keySlots || [];
+    if (choice === "labels") {
+      llmNote.textContent = "按资料里的标签抄写，不调用大模型。";
+      return;
+    }
+    if (slots.indexOf(choice) >= 0) {
+      llmNote.textContent = "这把密钥已保存在本机。留空则不改。";
+      return;
+    }
+    if (llmState.fromEnv && (choice === llmState.preset || (choice === "custom" && llmState.customUrl))) {
+      llmNote.textContent = "还没在这里保存。现在抽出会用启动时的模型。保存后以这里为准；密钥留空会把启动时那把密钥记在本机。";
+      return;
+    }
+    llmNote.textContent = "密钥只留在这台电脑上。商用模型请填你自己的密钥。";
+  }
+
+  function applyLlm(data) {
+    llmState = data || llmState;
+    (llmState.presets || []).forEach(function (item) {
+      var option = llmChoice.querySelector('option[value="' + item.id + '"]');
+      if (option && item.model) option.setAttribute("data-model", item.model);
+    });
+    var choice = "labels";
+    if (llmState.mode === "custom" || (llmState.mode === "env" && llmState.customUrl && !llmState.preset)) choice = "custom";
+    else if (llmState.preset) choice = llmState.preset;
+    llmChoice.value = choice;
+    if (choice === "custom") llmUrl.value = llmState.customUrl || "";
+    if (choice !== "labels") llmModel.value = llmState.model || presetModel(choice);
+    llmKey.value = "";
+    syncLlmFields();
+    paintLlmNote();
+  }
+
+  llmChoice.addEventListener("change", function () {
+    var choice = llmChoice.value;
+    var remembered = (llmState.models || {})[choice];
+    if (choice === "custom") llmUrl.value = llmState.customUrl || "";
+    if (choice !== "labels") llmModel.value = remembered || presetModel(choice);
+    llmKey.value = "";
+    syncLlmFields();
+    paintLlmNote();
+  });
+
+  settingsBtn.addEventListener("click", function () {
+    var opening = llmSheet.hidden;
+    llmSheet.hidden = !opening;
+    settingsBtn.setAttribute("aria-expanded", opening ? "true" : "false");
+  });
+
+  document.addEventListener("click", function (event) {
+    if (llmSheet.hidden) return;
+    if (llmSheet.contains(event.target) || settingsBtn.contains(event.target)) return;
+    closeLlm();
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && !llmSheet.hidden) closeLlm();
+  });
+
+  document.getElementById("llmSave").addEventListener("click", function () {
+    var choice = llmChoice.value;
+    var body = {
+      mode: choice === "labels" ? "labels" : (choice === "custom" ? "custom" : "preset"),
+      preset: choice,
+      model: llmModel.value.trim(),
+      url: llmUrl.value.trim(),
+      apiKey: llmKey.value
+    };
+    fetch(API + "/api/llm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      var type = res.headers.get("content-type") || "";
+      if (type.indexOf("application/json") < 0) throw new Error("fetch-fallback");
+      return res.json().then(function (data) {
+        if (!res.ok) throw new Error(data.error || "没有保存");
+        return data;
+      });
+    }).then(function (data) {
+      applyLlm(data);
+      closeLlm();
+      showSaved(data.mode === "labels" ? "已保存，抽出时按标签" : "已保存，抽出时用这个模型");
+    }).catch(function (err) {
+      var message = err && err.message ? err.message : "";
+      llmNote.textContent = /fetch|network|failed/i.test(message) ? "本机程序没有开，还不能保存" : (message || "没有保存");
+    });
+  });
+
+  try {
+    var stored = JSON.parse(localStorage.getItem("apple-fill-adapters") || "[]");
+    if (Array.isArray(stored)) adapters = stored;
+  } catch (e) {}
+
+  if (live) {
+    document.body.classList.add("live");
+    paintLive();
+    fetch(API + "/api/adapters").then(function (res) { return res.json(); }).then(function (data) {
+      (data.adapters || []).forEach(remember);
+      paintLive();
+    }).catch(function () {});
+    fetch(API + "/api/llm").then(function (res) { return res.json(); }).then(applyLlm).catch(function () {});
+  } else {
+    apply(state);
+  }
+})();
+</script>
+</body>
+</html>

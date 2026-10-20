@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>右栏五个状态</title>
+<link rel="stylesheet" href="theme.css">
+<style>
+  /* 仅用于预览排版，不属于应用本身 */
+  body { padding: var(--sp-3); }
+  h1 { font-size: var(--fs-xl); font-weight: 600; margin-bottom: var(--sp-1); }
+  .lead { color: var(--mute); margin-bottom: var(--sp-3); }
+  .row { display: flex; gap: var(--sp-3); overflow-x: auto; align-items: flex-start; padding-bottom: var(--sp-2); }
+  .cell { flex: 0 0 360px; }
+  .cap { font-size: var(--fs-s); color: var(--mute); margin-bottom: var(--sp-1); }
+  .cap b { color: var(--ink); font-weight: 600; }
+  .frame { border: var(--line); border-radius: var(--radius); overflow: hidden; }
+  .notes { margin-top: var(--sp-3); max-width: 720px; font-size: var(--fs-s); padding-left: var(--sp-2); }
+</style>
+</head>
+<body>
+
+<h1>右栏：五个状态</h1>
+<p class="lead">同一时刻只有一个东西是醒目的。横向滚动查看。</p>
+
+<div class="row">
+
+  <div class="cell">
+    <div class="cap"><b>1 · 空盒子</b>　新的一单</div>
+    <div class="frame"><div class="panel">
+      <div class="dropzone">把资料放到这里</div>
+      <div class="status"><span class="dot"></span>先放入资料</div>
+      <button class="btn-primary" disabled>抽出并填写</button>
+      <div class="footer">
+        <button class="btn-quiet" disabled>存档</button>
+        <button class="btn-quiet" disabled>删除</button>
+        <button class="btn-quiet settings" type="button">设置</button>
+      </div>
+    </div></div>
+  </div>
+
+  <div class="cell">
+    <div class="cap"><b>2 · 有文件，网站未打开</b></div>
+    <div class="frame"><div class="panel">
+      <div>
+        <div class="files">
+          <div class="file"><span class="name" title="产品说明书_V2_final.pdf">产品说明…V2_final.pdf</span><button class="x" aria-label="移除">×</button></div>
+          <div class="file"><span class="name" title="检测报告.pdf">检测报告.pdf</span><button class="x" aria-label="移除">×</button></div>
+          <div class="file"><span class="name" title="铭牌照片.jpg">铭牌照片.jpg</span><button class="x" aria-label="移除">×</button></div>
+        </div>
+        <div class="add-more">拖入更多文件，或点此选择</div>
+      </div>
+      <div class="status"><span class="dot"></span>先在左边打开网站并登录</div>
+      <button class="btn-primary" disabled>抽出并填写</button>
+      <div class="footer">
+        <button class="btn-quiet">存档</button>
+        <button class="btn-quiet">删除</button>
+        <button class="btn-quiet settings" type="button">设置</button>
+      </div>
+    </div></div>
+  </div>
+
+  <div class="cell">
+    <div class="cap"><b>3 · 网站已开，未对上适配包</b></div>
+    <div class="frame"><div class="panel">
+      <div class="files">
+        <div class="file"><span class="name" title="产品说明书_V2_final.pdf">产品说明…V2_final.pdf</span><button class="x" aria-label="移除">×</button></div>
+        <div class="file"><span class="name" title="检测报告.pdf">检测报告.pdf</span><button class="x" aria-label="移除">×</button></div>
+        <div class="file"><span class="name" title="铭牌照片.jpg">铭牌照片.jpg</span><button class="x" aria-label="移除">×</button></div>
+      </div>
+      <div class="status warn">
+        <span class="dot"></span>
+        <span>这个网站还没有适配包<a>去导入</a></span>
+      </div>
+      <button class="btn-primary" disabled>抽出并填写</button>
+      <div class="footer">
+        <button class="btn-quiet">存档</button>
+        <button class="btn-quiet">删除</button>
+        <button class="btn-quiet settings" type="button">设置</button>
+      </div>
+    </div></div>
+  </div>
+
+  <div class="cell">
+    <div class="cap"><b>4 · 可以填写</b>　全窗口最醒目的是主按钮</div>
+    <div class="frame"><div class="panel">
+      <div class="files">
+        <div class="file"><span class="name" title="产品说明书_V2_final.pdf">产品说明…V2_final.pdf</span><button class="x" aria-label="移除">×</button></div>
+        <div class="file"><span class="name" title="检测报告.pdf">检测报告.pdf</span><button class="x" aria-label="移除">×</button></div>
+        <div class="file"><span class="name" title="铭牌照片.jpg">铭牌照片.jpg</span><button class="x" aria-label="移除">×</button></div>
+      </div>
+      <div class="status ready"><span class="dot"></span>将填入：某站申报</div>
+      <button class="btn-primary">抽出并填写</button>
+      <div class="footer">
+        <button class="btn-quiet">存档</button>
+        <button class="btn-quiet">删除</button>
+        <button class="btn-quiet settings" type="button">设置</button>
+      </div>
+    </div></div>
+  </div>
+
+  <div class="cell">
+    <div class="cap"><b>5 · 已填完</b>　提交由你在左边亲手点</div>
+    <div class="frame"><div class="panel">
+      <div class="files">
+        <div class="file"><span class="name" title="产品说明书_V2_final.pdf">产品说明…V2_final.pdf</span><button class="x" aria-label="移除">×</button></div>
+        <div class="file"><span class="name" title="检测报告.pdf">检测报告.pdf</span><button class="x" aria-label="移除">×</button></div>
+        <div class="file"><span class="name" title="铭牌照片.jpg">铭牌照片.jpg</span><button class="x" aria-label="移除">×</button></div>
+      </div>
+      <div class="status ready"><span class="dot"></span>已填 9 项，留空 3 项</div>
+
+      <div class="blanks">
+        <div class="title">留空的项</div>
+        <div class="blank"><span class="dot"></span><span class="field">型号</span><span class="reason">资料里没有</span></div>
+        <div class="blank"><span class="dot"></span><span class="field">额定电压</span><span class="reason">两份文件不一致</span></div>
+        <div class="blank"><span class="dot"></span><span class="field">认证类别</span><span class="reason">只能推断，原文没有写</span></div>
+      </div>
+
+      <p class="hint">请在左边检查，确认无误后亲手点提交。点过提交、看过结果，再点「完成」。</p>
+
+      <button class="btn-primary outline">完成</button>
+      <div class="footer">
+        <button class="btn-quiet">存档</button>
+        <button class="btn-quiet">删除</button>
+        <button class="btn-quiet settings" type="button">设置</button>
+      </div>
+    </div></div>
+  </div>
+
+</div>
+
+<div class="notes">
+  <p class="cap"><b>补充细节（实现时照做）</b></p>
+  <ul class="mute">
+    <li>填写中：主按钮加 class <span class="mono">busy</span>，按钮文字显示「正在填写第 3/12 项…」，不用转圈。</li>
+    <li>删除：点一次，文字变成「再点一次确认」，3 秒后恢复。不弹窗。</li>
+    <li>存档成功：「存档」旁出现一行小字「已存到 runs\2026-10-20_xxx」，几秒后淡出。</li>
+    <li>文件名过长：中间省略，悬停 <span class="mono">title</span> 显示全名。</li>
+  </ul>
+</div>
+
+</body>
+</html>

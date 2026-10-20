@@ -192,9 +192,22 @@ def store_cached_output(documents: list[LoadedDocument], model: str, output: dic
     path.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def extract_product(paths: list[Path], product_id: str, *, backend: str = "auto") -> dict[str, Any]:
+def extract_product(
+    paths: list[Path],
+    product_id: str,
+    *,
+    backend: str = "auto",
+    llm: tuple[str, str, str] | None = None,
+) -> dict[str, Any]:
     if backend not in {"auto", "labels", "llm"}:
         raise ExtractError([f"不认识的抽取方式：{backend}"])
+    if llm is not None:
+        url, model, api_key = (part.strip() for part in llm)
+        if not url or not model:
+            raise ExtractError(["使用模型抽取时需要接口地址和模型名"])
+        from apple_fill.llm import extract_with_llm
+
+        return extract_with_llm(paths, product_id, url=url, model=model, api_key=api_key)
     use_llm = backend == "llm" or (backend == "auto" and bool(os.environ.get("APPLE_FILL_LLM_URL")))
     if not use_llm:
         return extract_labels(paths, product_id)

@@ -9,6 +9,7 @@ from pathlib import Path
 
 from apple_fill.adapter import AdapterError, load_adapter
 from apple_fill.demo_server import DemoServer
+from apple_fill.desk_server import serve_desk
 from apple_fill.documents import DocumentError
 from apple_fill.extract import ExtractError, extract_product
 from apple_fill.product import ProductError
@@ -23,7 +24,7 @@ def main(argv: list[str] | None = None) -> int:
         sys.stderr.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(
         prog="apple-fill",
-        description="从 PDF、Word、JPEG 抽出产品字段，并填写网页，停在提交按钮之前。",
+        description="从 PDF、Word、Excel、txt、JPEG 抽出产品字段，并填写网页，停在提交按钮之前。",
     )
     commands = parser.add_subparsers(dest="command", required=True)
 
@@ -45,12 +46,18 @@ def main(argv: list[str] | None = None) -> int:
     demo.add_argument("--headless", action="store_true")
     demo.add_argument("--product-id", default="demo-qp-200")
 
+    desk = commands.add_parser("desk", help="打开本机操作台")
+    desk.add_argument("--port", type=int, default=8780)
+
     args = parser.parse_args(argv)
     try:
         if args.command == "extract":
             return _extract(args)
         if args.command == "fill":
             return _fill(args)
+        if args.command == "desk":
+            serve_desk(args.port)
+            return 0
         return _demo(args)
     except (ExtractError, ProductError, DocumentError, AdapterError, SchemaError, UnsafeAction) as exc:
         print(str(exc), file=sys.stderr)

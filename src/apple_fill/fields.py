@@ -25,10 +25,10 @@ class SpecField:
 
 
 SCALAR_FIELDS: tuple[ScalarField, ...] = (
-    ScalarField("productName", ("产品名称", "产品名")),
+    ScalarField("productName", ("产品名称", "产品名", "设备名称")),
     ScalarField("productNameEn", ("英文名称", "产品英文名称", "Product Name"), derivable=True),
     ScalarField("brand", ("品牌", "商标")),
-    ScalarField("modelNo", ("型号", "产品型号", "规格型号")),
+    ScalarField("modelNo", ("型号", "产品型号", "规格型号", "设备型号")),
     ScalarField("category", ("产品类别", "产品分类", "类别"), derivable=True),
     ScalarField("manufacturerName", ("制造商", "生产者", "生产企业")),
     ScalarField("manufacturerAddress", ("制造商地址", "生产地址", "生产企业地址")),
