@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Apple Fill</title>
-<meta name="description" content="在你的电脑上填表，停在提交之前。资料不经过我们。">
+<meta name="description" content="填表、审核、保密。资料不经过我们。">
 <style>
   /* ===== 与桌面 App 同一套规则（theme.css），此处内联以便单文件发布 ===== */
   :root {
@@ -28,6 +28,8 @@
   .prose { max-width:680px; }
   section { padding:var(--sp-8) 0 0; }
   h2 { font-size:var(--fs-xl); font-weight:600; line-height:1.4; margin-bottom:var(--sp-3); }
+  .subh { font-size:var(--fs-l); font-weight:600; line-height:1.4; margin:var(--sp-6) 0 var(--sp-3); }
+  h3.subh:first-of-type { margin-top:0; }
 
   /* ===== 顶部导航 ===== */
   .nav { position:sticky; top:0; z-index:10; background:var(--paper); border-bottom:var(--line); }
@@ -78,7 +80,8 @@
   .shot .status { color:var(--green); font-weight:600; display:flex; gap:var(--sp-1); align-items:baseline; }
   .shot .blank { display:grid; grid-template-columns:8px 1fr; column-gap:var(--sp-1); align-items:baseline; font-size:var(--fs-m); }
   .shot .blank .r { grid-column:2; font-size:var(--fs-s); color:var(--mute); }
-  .shot .fakebtn { margin-top:auto; border:1px solid var(--green); color:var(--green); border-radius:var(--radius); text-align:center; height:40px; line-height:38px; font-weight:600; }
+  .shot .hand { margin-top:auto; font-size:var(--fs-s); color:var(--mute); line-height:1.6; }
+  .shot .fakebtn { margin-top:var(--sp-1); border:1px solid var(--green); color:var(--green); border-radius:var(--radius); text-align:center; height:40px; line-height:38px; font-weight:600; }
   .shot-cap { margin-top:var(--sp-1); font-size:var(--fs-s); color:var(--mute); }
   @media (max-width:760px) { .shot { grid-template-columns:1fr; } .shot .right { border-left:none; border-top:var(--line); } }
 
@@ -167,8 +170,8 @@
 
   <!-- ===== 首屏：只回答「是什么、怎么拿、安不安全」 ===== -->
   <div class="hero">
-    <h1>在你的电脑上填表，<br>停在提交之前。</h1>
-    <p class="lead">资料不经过我们。你的模型负责认字和找格子。写进网页的每个值，都要能指出原文那一句。登录、验证码和提交，由你完成。</p>
+    <h1>填表　审核　保密</h1>
+    <p class="lead">自动填写表格，人工+AI审核，合规审核，信息保密。<br>采用自有部署大模型，所有工作本地进行。</p>
 
     <div class="cta-row">
       <div class="cta-col">
@@ -203,15 +206,18 @@
         <div class="status"><span class="dot"></span>已填 1 项，留空 2 项</div>
         <div class="blank"><span class="dot amber"></span><span class="w6">型号</span><span class="r">资料里没有</span></div>
         <div class="blank"><span class="dot amber"></span><span class="w6">验证码</span><span class="r">由你填写</span></div>
+        <p class="hand">提交在左边的申报页上，由你点击。</p>
         <div class="fakebtn">完成</div>
       </div>
     </div>
-    <p class="shot-cap">示意图。你在打开的窗口里登录和翻页，右边是这一单的文件。</p>
+    <p class="shot-cap">示意图。你在打开的窗口里登录和翻页，右边是这一单的文件和留空项。</p>
   </div>
 
-  <!-- ===== 数据去向 ===== -->
+  <!-- ===== 流程：资料去向 + 五步 ===== -->
   <section id="flow">
-    <h2>资料去了哪里</h2>
+    <h2>流程</h2>
+    <p class="prose mute" style="font-size:var(--fs-m);margin-bottom:var(--sp-4)">下面每一步都在你的电脑上完成。我们看不到资料、密钥和申报内容。</p>
+    <h3 class="subh">资料去了哪里</h3>
     <div class="flow">
       <div class="cell">
         <div class="t">这台电脑</div>
@@ -242,35 +248,8 @@
       <span class="w6">没有出处的值会被丢掉</span>
       <span class="mute">220V 能在第 2 页的原句里找到，所以保留。110V 没有出处，不写进表。</span>
     </p>
-  </section>
 
-  <!-- ===== 下载 ===== -->
-  <section id="downloads">
-    <h2>下载到你的电脑</h2>
-    <p class="prose mute" style="font-size:var(--fs-m);margin-bottom:var(--sp-3)">Windows 64 位和 Apple 芯片的 Mac 各有一个安装包。包里已经带好 Python 和浏览器，解压后双击「启动AppleFill」。</p>
-    <div class="dl-grid">
-      <div class="dl-card" id="card-win">
-        <h3>Windows</h3>
-        <p>64 位 Windows 10 或更新版本。解压后双击 <span class="mono">启动AppleFill.bat</span>。</p>
-        <a class="btn" data-dl="win" href="#downloads">下载 Windows 包（1043 MB）</a>
-        <p class="sha" data-sha="win" hidden></p>
-        <div class="tip">如果系统弹出「Windows 已保护你的电脑」：点「更多信息」，再点「仍要运行」。</div>
-      </div>
-      <div class="dl-card" id="card-mac">
-        <h3>Mac</h3>
-        <p>Apple 芯片的 Mac。解压后双击 <span class="mono">启动AppleFill.command</span>。Intel 芯片的 Mac 还没有单独的包。</p>
-        <a class="btn" data-dl="mac" href="#downloads">下载 Mac 包（1113 MB）</a>
-        <p class="sha" data-sha="mac" hidden></p>
-        <div class="tip">如果提示无法验证开发者：右键点击「启动AppleFill.command」，选「打开」，再确认一次。</div>
-      </div>
-    </div>
-    <p class="updated">当前版本更新于 2026/10/20。</p>
-  </section>
-
-  <!-- ===== 五步 ===== -->
-  <section>
-    <h2>使用时发生什么</h2>
-    <p class="prose mute" style="font-size:var(--fs-m);margin-bottom:var(--sp-4)">下面每一步都在你的电脑上完成。我们看不到资料、密钥和申报内容。</p>
+    <h3 class="subh">一次只填当前这一页</h3>
     <ol class="steps prose">
       <li class="step"><span class="n">1</span><div>
         <div class="h">先填你自己的模型</div>
@@ -282,7 +261,7 @@
         <div class="h">对不上原文的值不保留</div>
         <div class="d">抄下来的值必须带出处：哪一份文件、第几页、原文那一句。这句话必须在该页里，值必须能从这句话得到。对不上就留空。两处资料不一致就标成冲突，值留空，每个候选各自带着出处。</div></div></li>
       <li class="step"><span class="n">4</span><div>
-        <div class="h">你先登录，再一页一页填</div>
+        <div class="h">你先登录，再点「抽出并填写」</div>
         <div class="d">你在打开的窗口里自己登录，再自己翻页。看到新的一页，点「抽出并填写」。程序只填这一页看得见的格子，不翻页，也不点提交。读回不一致的留空。</div></div></li>
       <li class="step"><span class="n">5</span><div>
         <div class="h">你补空格，你来提交</div>
@@ -292,7 +271,7 @@
 
   <!-- ===== 由你完成 ===== -->
   <section id="todo">
-    <h2>需要你自己完成的事</h2>
+    <h2>由你完成</h2>
     <div class="todo">
       <div><div class="h">模型与密钥</div><div class="d">向你单位允许的服务申请接口。地址、模型名和密钥只放在这台电脑上，不要贴进聊天软件。</div></div>
       <div><div class="h">登录和验证</div><div class="d">账号、密码、验证码、短信验证由你在申报网站上完成。程序不收集这些内容。</div></div>
@@ -303,8 +282,8 @@
 
   <!-- ===== 风险：按严重程度排序，第一条默认展开 ===== -->
   <section id="risks">
-    <h2>提交前请逐项看过</h2>
-    <p class="prose mute" style="font-size:var(--fs-m);margin-bottom:var(--sp-3)">这些情况程序不会替你消除。</p>
+    <h2>风险</h2>
+    <p class="prose mute" style="font-size:var(--fs-m);margin-bottom:var(--sp-3)">提交前请逐项看过。这些情况程序不会替你消除。</p>
 
     <details open>
       <summary><span class="dot amber"></span><span class="ttl">资料会到达你填写的模型</span><span class="one">页面文字、扫描页图片会发给那个地址，该地址的运营方能看到内容。</span></summary>
@@ -324,7 +303,7 @@
     </details>
     <details>
       <summary><span class="dot amber"></span><span class="ttl">网页结构可能对不上</span><span class="one">程序只填当前看得见、并且读回一致的格子。</span></summary>
-      <div class="more">你自己翻到下一页，再点一次。门户改版、验证码、动态编号会留空，由你在页面上补完。</div>
+      <div class="more">翻到下一页后，再点一次「抽出并填写」。门户改版、验证码、动态编号会留空，由你在页面上补完。</div>
     </details>
     <details>
       <summary><span class="dot amber"></span><span class="ttl">网站可能限制自动填写</span><span class="one">请确认你有权使用该账号，并且这种填写方式符合该网站的规则。</span></summary>
@@ -345,6 +324,29 @@
         <li>因资料本身有误、模型误读、你修改了内容，或你自行提交，而产生的损失，本程序的提供者不承担责任。</li>
       </ul>
     </details>
+  </section>
+
+  <!-- ===== 下载：放在责任说明之后 ===== -->
+  <section id="downloads">
+    <h2>下载到你的电脑</h2>
+    <p class="prose mute" style="font-size:var(--fs-m);margin-bottom:var(--sp-3)">Windows 64 位和 Apple 芯片的 Mac 各有一个安装包。包里已经带好 Python 和浏览器，解压后双击「启动AppleFill」。</p>
+    <div class="dl-grid">
+      <div class="dl-card" id="card-win">
+        <h3>Windows</h3>
+        <p>64 位 Windows 10 或更新版本。解压后双击 <span class="mono">启动AppleFill.bat</span>。</p>
+        <a class="btn" data-dl="win" href="#downloads">下载 Windows 包（1043 MB）</a>
+        <p class="sha" data-sha="win" hidden></p>
+        <div class="tip">如果系统弹出「Windows 已保护你的电脑」：点「更多信息」，再点「仍要运行」。</div>
+      </div>
+      <div class="dl-card" id="card-mac">
+        <h3>Mac</h3>
+        <p>Apple 芯片的 Mac。解压后双击 <span class="mono">启动AppleFill.command</span>。Intel 芯片的 Mac 还没有单独的包。</p>
+        <a class="btn" data-dl="mac" href="#downloads">下载 Mac 包（1113 MB）</a>
+        <p class="sha" data-sha="mac" hidden></p>
+        <div class="tip">如果提示无法验证开发者：右键点击「启动AppleFill.command」，选「打开」，再确认一次。</div>
+      </div>
+    </div>
+    <p class="updated">当前版本更新于 2026/10/20。</p>
   </section>
 
 </main>
