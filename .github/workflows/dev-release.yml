@@ -1,0 +1,66 @@
+name: dev-packages
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  group: dev-packages
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.bundle }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            triple: x86_64-pc-windows-msvc
+            bundle: AppleFill-Windows-x64.zip
+          - os: macos-latest
+            triple: aarch64-apple-darwin
+            bundle: AppleFill-Mac-AppleSilicon.zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build package
+        run: python bundle/build_bundle.py --triple ${{ matrix.triple }} --output dist/${{ matrix.bundle }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.bundle }}
+          path: dist/${{ matrix.bundle }}
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: AppleFill-*
+          merge-multiple: true
+          path: dist
+      - name: Replace the dev packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=dev-build
+          notes="Windows 与 Mac 的本机安装包。每次推送到 dev 会替换这两个文件，下载页上的链接保持不变。"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/*.zip --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$tag" dist/*.zip \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --prerelease \
+              --title "开发版" \
+              --notes "$notes"
+          fi

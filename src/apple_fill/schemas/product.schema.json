@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://apple-fill.local/product.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "productId", "extractedAt", "extractor", "documents", "fields"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "productId": { "type": "string", "minLength": 1 },
+    "extractedAt": { "type": "string", "minLength": 1 },
+    "extractor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["backend", "promptVersion"],
+      "properties": {
+        "backend": { "enum": ["labels", "llm"] },
+        "promptVersion": { "type": "string" },
+        "model": { "type": "string" }
+      }
+    },
+    "documents": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/document" }
+    },
+    "fields": { "$ref": "#/$defs/fields" },
+    "attachments": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/attachment" }
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["docId", "page", "quote"],
+      "properties": {
+        "docId": { "type": "string", "minLength": 1 },
+        "page": { "type": "integer", "minimum": 1 },
+        "quote": { "type": "string", "minLength": 1 }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "value", "sources"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "value": { "type": "string", "minLength": 1 },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/source" }
+        }
+      }
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "status", "sources"],
+      "properties": {
+        "value": { "type": ["string", "null"] },
+        "status": { "enum": ["sourced", "missing", "conflict", "derived"] },
+        "sources": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/source" }
+        },
+        "candidates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/candidate" }
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "label", "value", "status", "sources"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "value": { "type": ["string", "null"] },
+        "status": { "enum": ["sourced", "missing", "conflict", "derived"] },
+        "sources": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/source" }
+        },
+        "candidates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/candidate" }
+        }
+      }
+    },
+    "fields": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "productName",
+        "productNameEn",
+        "brand",
+        "modelNo",
+        "category",
+        "manufacturerName",
+        "manufacturerAddress",
+        "contactName",
+        "contactPhone",
+        "contactEmail",
+        "description",
+        "specs",
+        "attributes"
+      ],
+      "properties": {
+        "productName": { "$ref": "#/$defs/field" },
+        "productNameEn": { "$ref": "#/$defs/field" },
+        "brand": { "$ref": "#/$defs/field" },
+        "modelNo": { "$ref": "#/$defs/field" },
+        "category": { "$ref": "#/$defs/field" },
+        "manufacturerName": { "$ref": "#/$defs/field" },
+        "manufacturerAddress": { "$ref": "#/$defs/field" },
+        "contactName": { "$ref": "#/$defs/field" },
+        "contactPhone": { "$ref": "#/$defs/field" },
+        "contactEmail": { "$ref": "#/$defs/field" },
+        "description": { "$ref": "#/$defs/field" },
+        "specs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/spec" }
+        },
+        "attributes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/spec" }
+        }
+      }
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["docId", "filename", "sha256", "mime", "pageCount", "textAvailable"],
+      "properties": {
+        "docId": { "type": "string", "minLength": 1 },
+        "filename": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "minLength": 64 },
+        "mime": { "type": "string", "minLength": 1 },
+        "pageCount": { "type": "integer", "minimum": 1 },
+        "textAvailable": { "type": "boolean" },
+        "path": { "type": "string" }
+      }
+    },
+    "attachment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "docId", "filename", "sha256"],
+      "properties": {
+        "role": { "type": "string", "minLength": 1 },
+        "docId": { "type": "string", "minLength": 1 },
+        "filename": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "minLength": 64 },
+        "path": { "type": "string" }
+      }
+    }
+  }
+}

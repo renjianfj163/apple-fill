@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://apple-fill.local/adapter.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "version", "entryUrl", "allowedHosts", "steps"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "version": { "type": "integer", "minimum": 1 },
+    "entryUrl": { "type": "string", "minLength": 1 },
+    "allowedHosts": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "resourceHosts": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "sessionTtlSeconds": { "type": "integer", "minimum": 1 },
+    "ignoreControls": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/step" }
+    }
+  },
+  "$defs": {
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "action"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "action": {
+          "enum": ["goto", "fill", "select", "upload", "click", "wait_for"]
+        },
+        "url": { "type": "string" },
+        "label": { "type": "string" },
+        "selector": { "type": "string" },
+        "name": { "type": "string" },
+        "from": { "type": "string" },
+        "fromAttachment": { "type": "string" },
+        "transform": {
+          "type": "array",
+          "items": { "enum": ["trim", "upper", "lower"] }
+        },
+        "required": { "type": "boolean" },
+        "map": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    }
+  }
+}

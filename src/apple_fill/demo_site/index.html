@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <title>示例申报表</title>
+  <style>
+    body { margin: 0; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; background: #f4f7f5; color: #1f2933; }
+    main { max-width: 720px; margin: 32px auto; background: #fff; padding: 28px 32px 40px; }
+    h1 { font-size: 24px; margin-top: 0; }
+    label { display: block; margin: 14px 0 6px; }
+    input, textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; }
+    input[type="checkbox"], input[type="file"] { width: auto; padding: 0; }
+    label.choice { display: flex; align-items: center; gap: 8px; }
+    .actions { display: flex; gap: 12px; margin-top: 22px; }
+    button { padding: 8px 16px; }
+    .note { color: #52606d; font-size: 14px; }
+    #receipt { margin-top: 18px; padding: 12px; background: #ecfdf3; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>产品申报（示例）</h1>
+  <p class="note">这是本地练习页，用来确认自动填写会停在提交之前。</p>
+  <form id="apply">
+    <section id="page1">
+      <label for="productName">产品名称</label>
+      <input id="productName" name="productName"/>
+      <label for="productNameEn">英文名称</label>
+      <input id="productNameEn" name="productNameEn"/>
+      <label for="brand">品牌</label>
+      <input id="brand" name="brand"/>
+      <label for="modelNo">型号</label>
+      <input id="modelNo" name="modelNo"/>
+      <label for="category">产品类别</label>
+      <input id="category" name="category"/>
+      <label for="manufacturerName">制造商</label>
+      <input id="manufacturerName" name="manufacturerName"/>
+    </section>
+    <section id="page2" hidden>
+      <label for="description">产品简介</label>
+      <textarea id="description" name="description"></textarea>
+      <label for="ratedVoltage">额定电压</label>
+      <input id="ratedVoltage" name="ratedVoltage"/>
+      <label for="ratedPower">额定功率</label>
+      <input id="ratedPower" name="ratedPower"/>
+      <label for="standardNo">执行标准</label>
+      <input id="standardNo" name="standardNo"/>
+      <label for="labelPhoto">铭牌照片</label>
+      <input id="labelPhoto" name="labelPhoto" type="file" accept="image/jpeg"/>
+      <input type="hidden" name="_csrf" value="demo-token"/>
+      <label class="choice"><input type="checkbox" name="promoOptin" checked/> 接收推广邮件</label>
+      <label class="choice"><input id="agreeTerms" type="checkbox" name="agreeTerms"/> 本人保证所填内容真实有效</label>
+    </section>
+    <div class="actions">
+      <button id="nextBtn" type="button" data-action="next">下一步</button>
+      <button id="submitBtn" type="submit">提交申报</button>
+    </div>
+    <div id="receipt" hidden>
+      <strong>申请号</strong>
+      <div id="applicationNo"></div>
+    </div>
+  </form>
+</main>
+<script>
+  document.getElementById("nextBtn").addEventListener("click", () => {
+    document.getElementById("page2").hidden = false;
+    document.getElementById("nextBtn").hidden = true;
+  });
+  document.getElementById("apply").addEventListener("submit", (event) => {
+    if (!event.submitter || event.submitter.id !== "submitBtn") {
+      event.preventDefault();
+      return;
+    }
+    event.preventDefault();
+    window.__submitted = true;
+    const receipt = document.getElementById("receipt");
+    receipt.hidden = false;
+    document.getElementById("applicationNo").textContent = "DEMO-LOCAL";
+  });
+</script>
+</body>
+</html>

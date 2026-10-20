@@ -1,0 +1,85 @@
+id: demo-portal
+version: 1
+entryUrl: "{{baseUrl}}/"
+allowedHosts:
+  - 127.0.0.1
+  - localhost
+ignoreControls:
+  - _csrf
+steps:
+  - id: open
+    action: goto
+    url: "{{baseUrl}}/"
+  - id: fill-name
+    action: fill
+    name: productName
+    label: 产品名称
+    selector: "#productName"
+    from: fields.productName
+    required: true
+  - id: fill-name-en
+    action: fill
+    name: productNameEn
+    label: 英文名称
+    selector: "#productNameEn"
+    from: fields.productNameEn
+  - id: fill-brand
+    action: fill
+    name: brand
+    label: 品牌
+    selector: "#brand"
+    from: fields.brand
+  - id: fill-model
+    action: fill
+    name: modelNo
+    label: 型号
+    selector: "#modelNo"
+    from: fields.modelNo
+  - id: fill-category
+    action: fill
+    name: category
+    label: 产品类别
+    selector: "#category"
+    from: fields.category
+  - id: fill-manufacturer
+    action: fill
+    name: manufacturerName
+    label: 制造商
+    selector: "#manufacturerName"
+    from: fields.manufacturerName
+  - id: next
+    action: click
+    selector: "button[data-action=next]"
+  - id: fill-description
+    action: fill
+    name: description
+    label: 产品简介
+    selector: "#description"
+    from: fields.description
+  - id: fill-voltage
+    action: fill
+    name: ratedVoltage
+    label: 额定电压
+    selector: "#ratedVoltage"
+    from: fields.specs.ratedVoltage
+  - id: fill-power
+    action: fill
+    name: ratedPower
+    label: 额定功率
+    selector: "#ratedPower"
+    from: fields.specs.ratedPower
+  - id: fill-standard
+    action: fill
+    name: standardNo
+    label: 执行标准
+    selector: "#standardNo"
+    from: fields.specs.standardNo
+  - id: upload-label
+    action: upload
+    name: labelPhoto
+    label: 铭牌照片
+    selector: "#labelPhoto"
+    fromAttachment: label.jpg
+  - id: stop-before-submit
+    action: wait_for
+    selector: "#submitBtn"

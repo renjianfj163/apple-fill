@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <title>设备简介表单</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #f3f5f7;
+      color: #262626;
+      font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+      font-size: 14px;
+    }
+    main {
+      max-width: 1080px;
+      margin: 18px auto 48px;
+      background: #fff;
+      border: 1px solid #f0f0f0;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 132px 1fr;
+      border-bottom: 1px solid #f0f0f0;
+      min-height: 52px;
+    }
+    .label {
+      padding: 14px 10px 12px 16px;
+      color: #595959;
+      display: flex;
+      align-items: flex-start;
+      line-height: 1.45;
+    }
+    .field {
+      padding: 12px 18px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 22px;
+    }
+    .section {
+      padding: 16px 16px 8px;
+      color: #1677ff;
+      font-weight: 600;
+    }
+    label.opt {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #262626;
+      line-height: 1.5;
+    }
+    input[type="checkbox"], input[type="radio"] {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      accent-color: #1677ff;
+    }
+    input[type="text"], textarea {
+      border: 1px solid #d9d9d9;
+      border-radius: 2px;
+      padding: 6px 10px;
+      font: inherit;
+      color: #262626;
+      background: #fff;
+    }
+    input[type="text"] { height: 32px; }
+    textarea {
+      width: min(640px, 100%);
+      min-height: 96px;
+      resize: vertical;
+    }
+    .hint { color: #f5222d; font-size: 13px; }
+    .req { color: #f5222d; margin-right: 2px; }
+    .inline-label { color: #595959; }
+    .grow { width: min(280px, 100%); }
+    .wide { width: min(520px, 100%); }
+    .pair { display: contents; }
+    .ai-box {
+      width: min(760px, 100%);
+      border: 1px solid #e6e6e6;
+      padding: 12px 14px 16px;
+      display: grid;
+      gap: 12px;
+    }
+    .ai-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .ai-box input[type="text"] { background: #f5f5f5; width: min(420px, 100%); }
+    .ai-checks {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(160px, 1fr));
+      gap: 8px 12px;
+      margin-top: 4px;
+    }
+    .actions {
+      display: flex;
+      justify-content: center;
+      gap: 28px;
+      padding: 28px 16px 22px;
+    }
+    button {
+      min-width: 88px;
+      height: 36px;
+      border: 0;
+      border-radius: 4px;
+      background: #1677ff;
+      color: #fff;
+      font: inherit;
+      cursor: pointer;
+    }
+    .note {
+      padding: 0 16px 18px 148px;
+      color: #8c8c8c;
+      font-size: 12px;
+    }
+    @media (max-width: 800px) {
+      .row { grid-template-columns: 1fr; }
+      .note { padding-left: 16px; }
+      .ai-checks { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <form id="device">
+    <div class="row">
+      <div class="label">多天线传输模式：</div>
+      <div class="field">
+        <label class="opt"><input type="checkbox" name="tm5" checked/>是否支持TM5</label>
+        <label class="opt"><input type="checkbox" name="tm8"/>是否支持TM8（双流beamforming）</label>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="label">语音模式：</div>
+      <div class="field">
+        <label class="opt"><input type="checkbox" name="voiceGsm" checked/>是否支持语音回落到GSM</label>
+        <label class="opt"><input type="checkbox" name="voiceTd" checked/>是否支持语音回落到TD-SCDMA</label>
+        <label class="opt"><input type="checkbox" name="voiceWcdma"/>是否支持语音回落到WCDMA</label>
+        <label class="opt"><input type="checkbox" name="volte" checked/>是否支持VoLTE</label>
+        <label class="opt"><input type="checkbox" name="vonr"/>是否支持VoNR</label>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="label">CDMA1X是否支持补充信道：</div>
+      <div class="field">
+        <label class="opt"><input type="radio" name="cdma1xSupp" value="yes" checked/>是</label>
+        <label class="opt"><input type="radio" name="cdma1xSupp" value="no"/>否</label>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="label">CDMA数据编码方式：</div>
+      <div class="field">
+        <label class="opt"><input type="checkbox" name="convCode" checked/>卷积码</label>
+        <label class="opt"><input type="checkbox" name="turboCode" checked/>Turbo码</label>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="label">短信：</div>
+      <div class="field">
+        <label class="opt"><input type="checkbox" name="smsText" checked/>普通文字短信</label>
+        <label class="opt"><input type="checkbox" name="mms" checked/>MMS多媒体短信</label>
+        <label class="opt"><input type="checkbox" name="smsOther"/>其它</label>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="label">北斗三号短报文：</div>
+      <div class="field">
+        <label class="opt"><input type="radio" name="beidou3" value="yes"/>支持</label>
+        <label class="opt"><input type="radio" name="beidou3" value="no"/>不支持</label>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="label">北斗短报文专用终端：</div>
+      <div class="field">
+        <label class="opt"><input type="radio" name="beidouTerminal" value="yes"/>是</label>
+        <label class="opt"><input type="radio" name="beidouTerminal" value="no"/>否</label>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="label">产品特性描述：</div>
+      <div class="field" style="display:block">
+        <textarea name="featureDesc"></textarea>
+        <div class="hint">*包括但不限于：市场名称或产品系列、产品创新点、特色功能。</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="label">内置生成式</div>
+      <div class="field" style="display:block">
+        <div class="ai-line">
+          <span class="inline-label">AI模型：</span>
+          <label class="opt"><input type="radio" name="genAi" value="yes"/>是</label>
+          <label class="opt"><input type="radio" name="genAi" value="no"/>否</label>
+        </div>
+        <div class="ai-box">
+          <div class="ai-line">
+            <span>是否为用户提供AI功能开关：</span>
+            <label class="opt"><input type="radio" name="aiSwitch" value="yes"/>是</label>
+            <label class="opt"><input type="radio" name="aiSwitch" value="no"/>否</label>
+          </div>
+          <div class="ai-line"><span>模型名称：</span><input type="text" name="aiModelName"/></div>
+          <div class="ai-line"><span>模型提供商：</span><input type="text" name="aiVendor"/></div>
+          <div class="ai-line"><span>模型参数：</span><input type="text" name="aiParams"/></div>
+          <div class="ai-line"><span>是否备案：</span><input type="text" name="aiFiled"/></div>
+          <div class="ai-line"><span>提供的特色功能：</span><input type="text" name="aiFeatures"/></div>
+          <div class="ai-line"><span>备案号：</span><input type="text" name="aiRecordNo"/></div>
+          <div>
+            <div>实际AI功能：</div>
+            <div class="ai-checks">
+              <label class="opt"><input type="checkbox" name="aiFn" value="voice"/>智能语音助手</label>
+              <label class="opt"><input type="checkbox" name="aiFn" value="text"/>智能创作处理文本</label>
+              <label class="opt"><input type="checkbox" name="aiFn" value="image"/>智能图像分析处理</label>
+              <label class="opt"><input type="checkbox" name="aiFn" value="scan"/>AI扫描识物、通过扫描特定的物体提取信息</label>
+              <label class="opt"><input type="checkbox" name="aiFn" value="dictation"/>AI语音录入文本转化</label>
+              <label class="opt"><input type="checkbox" name="aiFn" value="translate"/>AI翻译</label>
+              <label class="opt"><input type="checkbox" name="aiFn" value="subtitle"/>AI实时字幕</label>
+              <label class="opt"><input type="checkbox" name="aiFn" value="remind"/>智能提醒与建议</label>
+              <label class="opt"><input type="checkbox" name="aiFn" value="call"/>智能来电接听</label>
+              <label class="opt"><input type="checkbox" name="aiFn" value="other"/>其他</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="label">支持的补充业务：</div>
+      <div class="field">
+        <label class="opt"><input type="checkbox" name="clip" checked/>号码识别</label>
+        <label class="opt"><input type="checkbox" name="cf" checked/>呼叫转移</label>
+        <label class="opt"><input type="checkbox" name="cw" checked/>呼叫等待</label>
+        <label class="opt"><input type="checkbox" name="hold" checked/>呼叫保持</label>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="label">紧急呼叫：</div>
+      <div class="field">
+        <label class="opt"><input type="checkbox" name="sos" checked/>支持</label>
+        <label class="opt"><input type="checkbox" name="sos110" checked/>110</label>
+        <label class="opt"><input type="checkbox" name="sos119" checked/>119</label>
+        <label class="opt"><input type="checkbox" name="sos112" checked/>112</label>
+        <label class="opt"><input type="checkbox" name="sos120" checked/>120</label>
+        <label class="opt"><input type="checkbox" name="sosOther" checked/>其它</label>
+        <input class="grow" type="text" name="sosOtherText" value="122" aria-label="其它紧急号码"/>
+      </div>
+    </div>
+
+    <div class="section">拓展功能</div>
+
+    <div class="row">
+      <div class="label">CMMB广播式手机电视：</div>
+      <div class="field">
+        <label class="opt"><input type="radio" name="cmmb" value="yes"/>支持</label>
+        <label class="opt"><input type="radio" name="cmmb" value="no" checked/>不支持</label>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="label">本地连接方式：</div>
+      <div class="field">
+        <label class="opt"><input type="checkbox" name="ir"/>红外</label>
+        <label class="opt"><input type="checkbox" name="bt" checked/>蓝牙</label>
+        <label class="opt"><input type="checkbox" name="usb" checked/>USB</label>
+        <label class="opt"><input type="checkbox" name="rs232"/>RS232</label>
+        <label class="opt"><input type="checkbox" name="pcmcia"/>PCMCIA</label>
+        <label class="opt"><input type="checkbox" name="localOther"/>其它</label>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="label">照相/摄像功能：</div>
+      <div class="field">
+        <label class="opt"><input type="radio" name="camera" value="yes" checked/>支持</label>
+        <label class="opt"><input type="radio" name="camera" value="no"/>不支持</label>
+        <span class="inline-label">摄像头数量：</span>
+        <input type="text" name="cameraCount" value="2" style="width:72px"/>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="label">EDGE：</div>
+      <div class="field">
+        <label class="opt"><input type="radio" name="edge" value="yes" checked/>支持</label>
+        <label class="opt"><input type="radio" name="edge" value="no"/>不支持</label>
+        <span class="inline-label">CLASS：</span>
+        <input type="text" name="edgeClass" value="10" style="width:88px"/>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="label"><span class="req">*</span>卫星导航定位系统：</div>
+      <div class="field">
+        <label class="opt"><input type="checkbox" name="gps" checked/>GPS</label>
+        <label class="opt"><input type="checkbox" name="agps" checked/>AGPS</label>
+        <label class="opt"><input type="checkbox" name="bds"/>北斗</label>
+        <label class="opt"><input type="checkbox" name="glonass"/>GLONASS</label>
+        <label class="opt"><input type="checkbox" name="gnssOther"/>其它</label>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="label">其它功能：</div>
+      <div class="field">
+        <label class="opt"><input type="checkbox" name="wlan" checked/>WLAN</label>
+        <label class="opt"><input type="checkbox" name="nfc" checked/>NFC</label>
+        <label class="opt"><input type="checkbox" name="wifi5"/>Wi-Fi 5及以下</label>
+        <label class="opt"><input type="checkbox" name="wifi6"/>Wi-Fi 6</label>
+        <label class="opt"><input type="checkbox" name="wifi7"/>Wi-Fi 7</label>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="label">电视功能：</div>
+      <div class="field">
+        <label class="opt"><input type="checkbox" name="tvStream"/>流媒体方式</label>
+        <label class="opt"><input type="checkbox" name="tvAnalog"/>模拟信号</label>
+        <label class="opt"><input type="checkbox" name="tvDigital"/>数字信号</label>
+        <label class="opt"><input type="checkbox" name="tvSat"/>卫星信号</label>
+        <label class="opt"><input type="checkbox" name="tvOther"/>其它</label>
+      </div>
+    </div>
+
+    <div class="section">配件</div>
+
+    <div class="row">
+      <div class="label">电池类型</div>
+      <div class="field">
+        <input class="grow" type="text" name="batteryType" value="锂电池"/>
+        <span class="inline-label">电池型号</span>
+        <input class="wide" type="text" name="batteryModel" value="616-00468；616-00469；616-00470；616-00471；616-00524"/>
+      </div>
+    </div>
+    <div class="row">
+      <div class="label">电池额定容量</div>
+      <div class="field">
+        <input class="grow" type="text" name="batteryCapacity" value="2942mAh"/>
+        <span class="inline-label">电池标称电压</span>
+        <input class="grow" type="text" name="batteryVoltage" value="3.79V"/>
+      </div>
+    </div>
+    <div class="row">
+      <div class="label">电池生产厂家</div>
+      <div class="field">
+        <input class="wide" type="text" name="batteryFactory" value="欣旺达电子股份有限公司第三分公司；华普电子（常熟）有限公司"/>
+        <span class="inline-label">电池制造商</span>
+        <input class="wide" type="text" name="batteryMaker" value="欣旺达电子股份有限公司；新普科技股份有限公司"/>
+      </div>
+    </div>
+    <div class="row">
+      <div class="label">其他配件</div>
+      <div class="field">
+        <input class="wide" type="text" name="otherParts"/>
+      </div>
+    </div>
+
+    <div class="field" style="padding-top:4px">
+      <div class="hint">*以上功能选项如未选择，则默认为不支持</div>
+    </div>
+    <p class="note">以上内容来自《设备简介1》。文档里没有写到的项目保持空白，北斗导航在原文中未勾选。</p>
+    <div class="actions">
+      <button type="button" id="prevBtn">上一步</button>
+      <button type="button" id="printBtn">打印</button>
+      <button type="button" id="nextBtn">下一步</button>
+    </div>
+  </form>
+</main>
+<script>
+  document.getElementById("printBtn").addEventListener("click", () => window.print());
+  document.getElementById("device").addEventListener("submit", (event) => event.preventDefault());
+</script>
+</body>
+</html>
