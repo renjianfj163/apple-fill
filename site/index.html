@@ -50,13 +50,15 @@
     font-family:var(--font-ui); font-size:var(--fs-l); font-weight:600; text-decoration:none; cursor:pointer; }
   .btn:hover { opacity:.92; }
   .btn.outline { background:transparent; color:var(--green); }
-  .cta-meta { margin-top:var(--sp-1); font-size:var(--fs-s); color:var(--mute); }
-  .cta-alt { margin-top:var(--sp-1); font-size:var(--fs-s); }
+  .cta-row { display:flex; flex-wrap:wrap; gap:var(--sp-4); align-items:flex-start; }
+  .cta-col { display:flex; flex-direction:column; align-items:flex-start; gap:var(--sp-1); width:min(280px, 100%); }
+  .cta-col .btn { width:100%; }
+  .cta-meta { margin-top:0; font-size:var(--fs-s); color:var(--mute); }
   .trust { margin-top:var(--sp-3); font-size:var(--fs-m); color:var(--mute); display:flex; align-items:baseline; gap:var(--sp-1); }
   .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--green); flex:none; transform:translateY(-1px); }
   .dot.amber { background:var(--amber); }
   .mobile-note { display:none; }
-  body.is-mobile #cta, body.is-mobile .cta-meta, body.is-mobile .cta-alt { display:none; }
+  body.is-mobile .cta-row { display:none; }
   body.is-mobile .mobile-note { display:block; }
   body.is-mobile .nav-dl { display:none; }
   .mobile-note p { margin-bottom:var(--sp-2); }
@@ -168,9 +170,16 @@
     <h1>在你的电脑上填表，<br>停在提交之前。</h1>
     <p class="lead">资料不经过我们。你的模型负责认字和找格子。写进网页的每个值，都要能指出原文那一句。登录、验证码和提交，由你完成。</p>
 
-    <a class="btn" id="cta" href="#downloads">下载</a>
-    <p class="cta-meta" id="cta-meta"></p>
-    <p class="cta-alt" id="cta-alt"></p>
+    <div class="cta-row">
+      <div class="cta-col">
+        <a class="btn" data-dl="win" href="#downloads">下载 Windows 版</a>
+        <p class="cta-meta">64 位 Windows 10 或更新版本 · 1043 MB · 解压后双击「启动AppleFill.bat」</p>
+      </div>
+      <div class="cta-col">
+        <a class="btn" data-dl="mac" href="#downloads">下载 Mac 版</a>
+        <p class="cta-meta">Apple 芯片的 Mac · 1113 MB · 解压后双击「启动AppleFill.command」</p>
+      </div>
+    </div>
 
     <div class="mobile-note">
       <p>请在电脑上打开此页下载。</p>
@@ -367,42 +376,16 @@
     var ua = navigator.userAgent || "";
     var touchMac = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;   // iPad 伪装成 Mac
     var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || touchMac;
-    var os = isMobile ? "mobile" : /Windows/.test(ua) ? "win" : /Macintosh|Mac OS X/.test(ua) ? "mac" : "unknown";
     if (isMobile) document.body.classList.add("is-mobile");
 
     function href(k) { return CONFIG.url[k] || "#downloads"; }
 
     // 下载区两个按钮 + SHA
     ["win", "mac"].forEach(function (k) {
-      var a = document.querySelector('[data-dl="' + k + '"]');
-      if (a) a.href = href(k);
+      document.querySelectorAll('[data-dl="' + k + '"]').forEach(function (a) { a.href = href(k); });
       var s = document.querySelector('[data-sha="' + k + '"]');
       if (s && CONFIG.sha[k]) { s.hidden = false; s.innerHTML = "SHA-256：<span class='mono'></span>"; s.firstElementChild.textContent = CONFIG.sha[k]; }
     });
-
-    // 首屏只给一个按钮
-    var cta = document.getElementById("cta");
-    var meta = document.getElementById("cta-meta");
-    var alt = document.getElementById("cta-alt");
-    var info = {
-      win: { label: "下载 Windows 版", meta: "64 位 Windows 10 或更新版本 · 1043 MB · 解压后双击「启动AppleFill.bat」",
-             altText: "需要 Mac 版？", altKey: "mac" },
-      mac: { label: "下载 Mac 版", meta: "Apple 芯片的 Mac · 1113 MB · 解压后双击「启动AppleFill.command」",
-             altText: "需要 Windows 版？", altKey: "win" }
-    };
-    if (info[os]) {
-      cta.textContent = info[os].label;
-      cta.href = href(os);
-      meta.textContent = info[os].meta;
-      var l = document.createElement("a");
-      l.href = href(info[os].altKey);
-      l.textContent = info[os].altText;
-      alt.appendChild(l);
-    } else if (!isMobile) {
-      cta.textContent = "选择下载版本";
-      cta.href = "#downloads";
-      meta.textContent = "Windows 64 位 或 Apple 芯片的 Mac";
-    }
 
     // 手机：复制链接
     var copy = document.getElementById("copy-link");
