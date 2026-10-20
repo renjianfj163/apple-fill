@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Apple Fill</title>
-<meta name="description" content="填表、审核、保密。资料不经过我们。">
+<meta name="description" content="填表、审核、保密。采用自有部署大模型，所有工作本地进行。">
 <style>
   /* ===== 与桌面 App 同一套规则（theme.css），此处内联以便单文件发布 ===== */
   :root {
@@ -65,25 +65,171 @@
   body.is-mobile .nav-dl { display:none; }
   .mobile-note p { margin-bottom:var(--sp-2); }
 
-  /* ===== 窗口示意图 ===== */
-  .shot-wrap { padding-top:var(--sp-6); }
-  .shot { display:grid; grid-template-columns:62fr 38fr; border:var(--line); border-radius:var(--radius); overflow:hidden; background:var(--paper); }
-  .shot .left { background:#fff; padding:var(--sp-3); }
-  .shot .right { padding:var(--sp-3); border-left:var(--line); display:flex; flex-direction:column; gap:var(--sp-2); font-size:var(--fs-m); }
-  .addr { display:flex; gap:var(--sp-1); align-items:center; height:32px; border:var(--line); border-radius:var(--radius); padding:0 var(--sp-1); font-size:var(--fs-s); color:var(--mute); margin-bottom:var(--sp-3); }
+  /* ===== 窗口示意图：8s 循环。抽出 → 写入有依据的 → 留空并留给你提交 ===== */
+  .shot-wrap { --shot:8s; --play:running; padding-top:var(--sp-6); }
+  .shot-wrap:hover { --play:paused; }
+  .shot { --shot-edge:#C4BBA8; display:grid; grid-template-columns:62fr 38fr; border:1px solid var(--shot-edge); border-radius:var(--radius); overflow:hidden; background:#fff; }
+  .shot .left { background:#fff; padding:var(--sp-3); display:flex; flex-direction:column; }
+  .shot .right { padding:var(--sp-3); border-left:1px solid var(--shot-edge); background:#E7E1D4; display:flex; flex-direction:column; gap:var(--sp-2); font-size:var(--fs-m); }
+  .pane-kicker { font-size:var(--fs-s); color:var(--mute-soft); margin-bottom:var(--sp-2); }
+  .shot .right .pane-kicker { margin-bottom:0; }
+  .addr { display:flex; gap:var(--sp-1); align-items:center; height:32px; border:var(--line); border-radius:var(--radius); padding:0 var(--sp-1); font-size:var(--fs-s); color:var(--mute); margin-bottom:var(--sp-2); }
   .addr .go { margin-left:auto; border:1px solid var(--green); color:var(--green); border-radius:var(--radius); padding:0 var(--sp-1); font-weight:600; }
   .frow { display:grid; grid-template-columns:96px 1fr; gap:var(--sp-1); align-items:center; padding:var(--sp-1) 0; font-size:var(--fs-m); }
   .frow .lab { color:var(--mute); }
-  .frow .box { border:1px solid var(--paper-deep); border-radius:var(--radius); padding:4px var(--sp-1); min-height:32px; display:flex; align-items:center; }
+  .frow .box { position:relative; border:1px solid var(--paper-deep); border-radius:var(--radius); padding:4px var(--sp-1); min-height:32px; display:flex; align-items:center; background:transparent; }
   .frow .box.empty { border-style:dashed; color:var(--mute); font-size:var(--fs-s); }
-  .shot .files { font-family:var(--font-mono); font-size:var(--fs-s); border:var(--line); border-radius:var(--radius); padding:var(--sp-1) var(--sp-2); }
-  .shot .status { color:var(--green); font-weight:600; display:flex; gap:var(--sp-1); align-items:baseline; }
+  .shot .is-volt .box { border-style:dashed; overflow:hidden; }
+  .shot .val { display:inline-block; font-weight:600; clip-path:inset(0 100% 0 0); }
+  .shot .cite { position:absolute; right:var(--sp-1); top:0; bottom:0; display:flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:var(--fs-s); color:var(--mute); opacity:0; }
+  .shot .cite::before { content:""; width:1px; height:10px; background:var(--green); flex:none; }
+  .shot .is-volt .box::after { content:""; position:absolute; left:0; right:0; bottom:0; height:2px; background:var(--green); transform:scaleX(0); transform-origin:left center; }
+  .submit-row { margin-top:var(--sp-3); display:flex; justify-content:flex-end; align-items:center; gap:var(--sp-1); }
+  .submit { display:inline-flex; align-items:center; height:40px; padding:0 var(--sp-2); border:1px solid var(--paper-deep); border-radius:var(--radius); color:var(--mute-soft); font-weight:600; font-size:var(--fs-m); background:#fff; }
+  .submit-note { font-size:var(--fs-s); color:var(--mute); opacity:0; }
+  .shot .files { display:flex; align-items:center; gap:var(--sp-1); font-family:var(--font-mono); font-size:var(--fs-s); border:1px solid var(--shot-edge); border-radius:var(--radius); padding:var(--sp-1) var(--sp-2); background:#fff; }
+  .doc { width:13px; height:16px; border:1px solid var(--mute-soft); border-radius:2px; flex:none; background:
+    linear-gradient(var(--mute-soft), var(--mute-soft)) 3px 4px / 7px 1px no-repeat,
+    linear-gradient(var(--mute-soft), var(--mute-soft)) 3px 7px / 7px 1px no-repeat,
+    linear-gradient(var(--mute-soft), var(--mute-soft)) 3px 10px / 5px 1px no-repeat; }
+  .shot .status { font-weight:600; display:flex; gap:var(--sp-1); align-items:baseline; min-height:1.6em; }
+  .shot .status .dot { background:var(--mute-soft); transform:none; }
+  .st-stack { position:relative; min-height:1.6em; }
+  .st { white-space:nowrap; }
+  .st-done { color:var(--green); opacity:0; }
+  .st-wait { position:absolute; left:0; top:0; color:var(--mute); }
   .shot .blank { display:grid; grid-template-columns:8px 1fr; column-gap:var(--sp-1); align-items:baseline; font-size:var(--fs-m); }
   .shot .blank .r { grid-column:2; font-size:var(--fs-s); color:var(--mute); }
-  .shot .hand { margin-top:auto; font-size:var(--fs-s); color:var(--mute); line-height:1.6; }
-  .shot .fakebtn { margin-top:var(--sp-1); border:1px solid var(--green); color:var(--green); border-radius:var(--radius); text-align:center; height:40px; line-height:38px; font-weight:600; }
-  .shot-cap { margin-top:var(--sp-1); font-size:var(--fs-s); color:var(--mute); }
-  @media (max-width:760px) { .shot { grid-template-columns:1fr; } .shot .right { border-left:none; border-top:var(--line); } }
+  .shot .hand { margin-top:var(--sp-1); font-size:var(--fs-s); color:var(--mute); line-height:1.6; }
+  .shot .fakebtn { border:1px solid var(--green); color:var(--green); background:#fff; border-radius:var(--radius); text-align:center; height:40px; line-height:38px; font-weight:600; }
+  .beats { grid-column:1 / -1; list-style:none; display:flex; flex-wrap:wrap; gap:var(--sp-1) var(--sp-4); margin:0; padding:var(--sp-2) var(--sp-3); border-top:1px solid var(--shot-edge); background:#E7E1D4; font-size:var(--fs-s); color:var(--mute); }
+  .beats li { position:relative; padding-bottom:4px; }
+  .beats li::after { content:""; position:absolute; left:0; right:0; bottom:0; height:1px; background:var(--green); transform:scaleX(0); transform-origin:left center; }
+  .shot-cap { margin-top:var(--sp-2); font-size:var(--fs-s); color:var(--mute); }
+  @media (max-width:760px) {
+    .shot { grid-template-columns:1fr; }
+    .shot .right { border-left:none; border-top:1px solid var(--shot-edge); }
+  }
+  @media (max-width:380px) { .shot .cite { display:none; } }
+
+  @media (prefers-reduced-motion:no-preference) {
+    .shot .fakebtn { animation:shot-btn var(--shot) linear infinite; animation-play-state:var(--play); }
+    .shot .files { animation:shot-file var(--shot) linear infinite; animation-play-state:var(--play); }
+    .shot .val { animation:shot-val var(--shot) linear infinite; animation-play-state:var(--play); }
+    .shot .cite { animation:shot-cite var(--shot) linear infinite; animation-play-state:var(--play); }
+    .shot .is-volt .lab { animation:shot-volt-lab var(--shot) linear infinite; animation-play-state:var(--play); }
+    .shot .is-volt .box { animation:shot-volt-box var(--shot) linear infinite; animation-play-state:var(--play); }
+    .shot .is-volt .box::after { animation:shot-line var(--shot) linear infinite; animation-play-state:var(--play); }
+    .shot .is-model .box { animation:shot-model-box var(--shot) linear infinite; animation-play-state:var(--play); }
+    .shot .is-code .box { animation:shot-code-box var(--shot) linear infinite; animation-play-state:var(--play); }
+    .shot .st-wait { animation:shot-wait var(--shot) linear infinite; animation-play-state:var(--play); }
+    .shot .st-done { animation:shot-done var(--shot) linear infinite; animation-play-state:var(--play); }
+    .shot .status .dot { animation:shot-dot var(--shot) linear infinite; animation-play-state:var(--play); }
+    .shot .submit { animation:shot-submit var(--shot) linear infinite; animation-play-state:var(--play); }
+    .shot .submit-note { animation:shot-note var(--shot) linear infinite; animation-play-state:var(--play); }
+    .shot .hand { animation:shot-hand var(--shot) linear infinite; animation-play-state:var(--play); }
+    .beats li:nth-child(1) { animation:beat-c1 var(--shot) linear infinite; animation-play-state:var(--play); }
+    .beats li:nth-child(2) { animation:beat-c2 var(--shot) linear infinite; animation-play-state:var(--play); }
+    .beats li:nth-child(3) { animation:beat-c3 var(--shot) linear infinite; animation-play-state:var(--play); }
+    .beats li:nth-child(1)::after { animation:beat-l1 var(--shot) linear infinite; animation-play-state:var(--play); }
+    .beats li:nth-child(2)::after { animation:beat-l2 var(--shot) linear infinite; animation-play-state:var(--play); }
+    .beats li:nth-child(3)::after { animation:beat-l3 var(--shot) linear infinite; animation-play-state:var(--play); }
+  }
+  @keyframes shot-btn {
+    0%, 7% { background:#fff; color:var(--green); transform:none; box-shadow:none; }
+    12% { background:var(--green); color:var(--paper); transform:translateY(1px); box-shadow:0 0 0 4px rgba(31,77,58,.14); }
+    18%, 100% { background:#fff; color:var(--green); transform:none; box-shadow:none; }
+  }
+  @keyframes shot-file {
+    0%, 8% { border-color:var(--shot-edge); }
+    14%, 32% { border-color:var(--green); }
+    42%, 100% { border-color:var(--shot-edge); }
+  }
+  @keyframes shot-val {
+    0%, 16% { clip-path:inset(0 100% 0 0); }
+    30%, 88% { clip-path:inset(0 0 0 0); }
+    96%, 100% { clip-path:inset(0 100% 0 0); }
+  }
+  @keyframes shot-cite {
+    0%, 26% { opacity:0; }
+    36%, 88% { opacity:1; }
+    96%, 100% { opacity:0; }
+  }
+  @keyframes shot-volt-lab {
+    0%, 16% { color:var(--mute); }
+    30%, 88% { color:var(--ink); }
+    96%, 100% { color:var(--mute); }
+  }
+  @keyframes shot-volt-box {
+    0%, 16% { border-style:dashed; background:transparent; }
+    28%, 88% { border-style:solid; background:rgba(31,77,58,.10); }
+    96%, 100% { border-style:dashed; background:transparent; }
+  }
+  @keyframes shot-line {
+    0%, 16% { transform:scaleX(0); }
+    30%, 88% { transform:scaleX(1); }
+    96%, 100% { transform:scaleX(0); }
+  }
+  @keyframes shot-model-box {
+    0%, 54% { border-color:var(--paper-deep); background-color:transparent; }
+    60%, 68% { border-color:var(--amber); background-color:rgba(183,121,31,.16); }
+    76%, 100% { border-color:var(--paper-deep); background-color:transparent; }
+  }
+  @keyframes shot-code-box {
+    0%, 66% { border-color:var(--paper-deep); background-color:transparent; }
+    72%, 80% { border-color:var(--amber); background-color:rgba(183,121,31,.16); }
+    86%, 100% { border-color:var(--paper-deep); background-color:transparent; }
+  }
+  @keyframes shot-wait {
+    0%, 14% { opacity:1; }
+    26%, 90% { opacity:0; }
+    98%, 100% { opacity:1; }
+  }
+  @keyframes shot-done {
+    0%, 16% { opacity:0; }
+    28%, 88% { opacity:1; }
+    96%, 100% { opacity:0; }
+  }
+  @keyframes shot-dot {
+    0%, 16% { background-color:var(--mute-soft); }
+    28%, 88% { background-color:var(--green); }
+    96%, 100% { background-color:var(--mute-soft); }
+  }
+  @keyframes shot-submit {
+    0%, 54% { border-color:var(--paper-deep); color:var(--mute-soft); box-shadow:none; }
+    64% { border-color:var(--green); color:var(--green); box-shadow:0 0 0 4px rgba(31,77,58,.12); }
+    72%, 88% { border-color:var(--green); color:var(--green); box-shadow:none; }
+    96%, 100% { border-color:var(--paper-deep); color:var(--mute-soft); box-shadow:none; }
+  }
+  @keyframes shot-note {
+    0%, 58% { opacity:0; }
+    68%, 88% { opacity:1; }
+    96%, 100% { opacity:0; }
+  }
+  @keyframes shot-hand {
+    0%, 54% { color:var(--mute); }
+    66%, 88% { color:var(--ink); }
+    96%, 100% { color:var(--mute); }
+  }
+  @keyframes beat-c1 { 0%, 6% { color:var(--mute); } 10%, 18% { color:var(--ink); } 26%, 100% { color:var(--mute); } }
+  @keyframes beat-l1 { 0%, 6% { transform:scaleX(0); } 12%, 18% { transform:scaleX(1); } 26%, 100% { transform:scaleX(0); } }
+  @keyframes beat-c2 { 0%, 26% { color:var(--mute); } 32%, 46% { color:var(--ink); } 54%, 100% { color:var(--mute); } }
+  @keyframes beat-l2 { 0%, 28% { transform:scaleX(0); } 34%, 46% { transform:scaleX(1); } 54%, 100% { transform:scaleX(0); } }
+  @keyframes beat-c3 { 0%, 52% { color:var(--mute); } 58%, 88% { color:var(--ink); } 96%, 100% { color:var(--mute); } }
+  @keyframes beat-l3 { 0%, 54% { transform:scaleX(0); } 60%, 88% { transform:scaleX(1); } 96%, 100% { transform:scaleX(0); } }
+  @media (prefers-reduced-motion:reduce) {
+    .shot .val { clip-path:none; }
+    .shot .cite { opacity:1; }
+    .shot .is-volt .lab { color:var(--ink); }
+    .shot .is-volt .box { border-style:solid; background:rgba(31,77,58,.10); }
+    .shot .is-volt .box::after { transform:scaleX(1); }
+    .shot .st-wait { opacity:0; }
+    .shot .st-done { opacity:1; }
+    .shot .status .dot { background:var(--green); }
+    .shot .blank { opacity:1; }
+    .submit { border-color:var(--green); color:var(--green); }
+    .submit-note { opacity:1; }
+  }
 
   /* ===== 数据去向四格 ===== */
   .flow { display:grid; grid-template-columns:repeat(4,1fr); gap:var(--sp-3); }
@@ -121,6 +267,9 @@
   .step .n { font-size:var(--fs-xxl); font-weight:600; color:var(--green); line-height:1.2; }
   .step .h { font-weight:600; font-size:var(--fs-l); margin-bottom:4px; }
   .step .d { font-size:var(--fs-m); color:var(--ink); line-height:1.8; }
+  .notes { max-width:680px; display:flex; flex-direction:column; gap:var(--sp-3); }
+  .notes .h { font-weight:600; }
+  .notes .d { font-size:var(--fs-m); line-height:1.8; }
 
   /* ===== 由你完成 ===== */
   .todo { display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-4) var(--sp-4); }
@@ -131,16 +280,15 @@
   /* ===== 风险 / 责任（折叠） ===== */
   details { border-top:var(--line); }
   details:last-of-type { border-bottom:var(--line); }
-  summary { list-style:none; cursor:pointer; padding:var(--sp-2) 0; display:grid; grid-template-columns:8px 1fr 16px; column-gap:var(--sp-1); align-items:baseline; }
+  summary { list-style:none; cursor:pointer; padding:var(--sp-2) 0; display:grid; grid-template-columns:1fr 16px; column-gap:var(--sp-2); align-items:center; }
   summary::-webkit-details-marker { display:none; }
-  summary::after { content:"+"; color:var(--mute); text-align:right; grid-column:3; grid-row:1; }
+  summary::marker { content:""; }
+  summary::after { content:"+"; color:var(--mute); text-align:right; font-size:var(--fs-l); line-height:1; }
+  summary:hover::after { color:var(--ink); }
   details[open] summary::after { content:"−"; }
-  summary .ttl { font-weight:600; grid-column:2; }
-  summary .one { grid-column:2; font-size:var(--fs-m); color:var(--mute); line-height:1.7; }
-  details .more { padding:0 0 var(--sp-2) calc(8px + var(--sp-1)); font-size:var(--fs-m); line-height:1.8; max-width:680px; }
-  .plain-sum { grid-template-columns:1fr 16px; }
-  .plain-sum .ttl { grid-column:1; font-size:var(--fs-l); }
-  .plain-sum::after { grid-column:2; }
+  summary .ttl { margin:0; font-weight:600; font-size:var(--fs-l); line-height:1.4; }
+  details .more { padding:0 0 var(--sp-2); font-size:var(--fs-m); line-height:1.8; max-width:680px; }
+  .plain-sum .ttl { font-size:var(--fs-xl); }
   .bounds { list-style:none; padding:0 0 var(--sp-2); max-width:680px; display:flex; flex-direction:column; gap:var(--sp-1); font-size:var(--fs-m); line-height:1.8; }
   .bounds li { padding-left:var(--sp-2); position:relative; }
   .bounds li::before { content:""; position:absolute; left:0; top:11px; width:6px; height:6px; border-radius:50%; background:var(--mute-soft); }
@@ -157,9 +305,8 @@
   <div class="wrap">
     <a class="brand" href="#top">Apple Fill</a>
     <nav class="nav-links">
-      <a class="link" href="#flow">流程</a>
-      <a class="link" href="#todo">由你完成</a>
-      <a class="link" href="#risks">风险</a>
+      <a class="link" href="#flow">如何工作</a>
+      <a class="link" href="#risks">隐私与风险</a>
       <a class="link" href="#bounds">责任边界</a>
       <a class="nav-dl" href="#downloads">下载</a>
     </nav>
@@ -189,140 +336,109 @@
       <button class="btn outline" id="copy-link" type="button">复制本页链接</button>
     </div>
 
-    <p class="trust"><span class="dot"></span>资料不经过我们的服务器，在你的电脑和你自己的模型之间完成。</p>
+    <p class="trust"><span class="dot"></span>资料保存在你的服务器，但可能发送给你配置的模型。</p>
   </div>
 
-  <!-- ===== 窗口示意图（静态，非真实截图；上线后建议换成真截图） ===== -->
+  <!-- ===== 窗口示意图：页内循环，不是录屏 ===== -->
   <div class="shot-wrap">
-    <div class="shot" role="img" aria-label="程序窗口示意：左边是已打开的申报网站，右边是这一单的文件和填写状态">
+    <div class="shot" role="img" aria-label="示意图。打开申报页并放入说明书后，点「抽出并填写」。额定电压写入 220V，出处在第 2 页。型号因资料里没有而留空，验证码由你填写。提交由你亲自点击。">
       <div class="left">
+        <div class="pane-kicker">申报页</div>
         <div class="addr"><span>https://</span><span>某站申报</span><span class="go">打开</span></div>
-        <div class="frow"><span class="lab">额定电压</span><span class="box">220V</span></div>
-        <div class="frow"><span class="lab">型号</span><span class="box empty">留空，你来填</span></div>
-        <div class="frow"><span class="lab">验证码</span><span class="box empty">由你填写</span></div>
+        <div class="frow is-volt">
+          <span class="lab">额定电压</span>
+          <span class="box"><span class="val">220V</span><span class="cite">说明书 · 第 2 页</span></span>
+        </div>
+        <div class="frow is-model">
+          <span class="lab">型号</span>
+          <span class="box empty">留空，你来填</span>
+        </div>
+        <div class="frow is-code">
+          <span class="lab">验证码</span>
+          <span class="box empty">由你填写</span>
+        </div>
+        <div class="submit-row">
+          <span class="submit-note">由你点击</span>
+          <span class="submit">提交</span>
+        </div>
       </div>
       <div class="right">
-        <div class="files">说明书.pdf</div>
-        <div class="status"><span class="dot"></span>已填 1 项，留空 2 项</div>
+        <div class="pane-kicker">这一单</div>
+        <div class="files"><span class="doc" aria-hidden="true"></span>说明书.pdf</div>
+        <div class="status">
+          <span class="dot"></span>
+          <span class="st-stack">
+            <span class="st st-done">已填 1 项，留空 2 项</span>
+            <span class="st st-wait">看到这一页</span>
+          </span>
+        </div>
         <div class="blank"><span class="dot amber"></span><span class="w6">型号</span><span class="r">资料里没有</span></div>
         <div class="blank"><span class="dot amber"></span><span class="w6">验证码</span><span class="r">由你填写</span></div>
-        <p class="hand">提交在左边的申报页上，由你点击。</p>
-        <div class="fakebtn">完成</div>
+        <p class="hand">提交在申报页上，由你点击。</p>
+        <div class="fakebtn">抽出并填写</div>
       </div>
+      <ol class="beats" aria-hidden="true">
+        <li>抽出当前页</li>
+        <li>只填有依据的</li>
+        <li>留空，你来提交</li>
+      </ol>
     </div>
-    <p class="shot-cap">示意图。你在打开的窗口里登录和翻页，右边是这一单的文件和留空项。</p>
+    <p class="shot-cap">示意图。登录到目标页面后，点「抽出并填写」。提交由你亲自点击。</p>
   </div>
 
-  <!-- ===== 流程：资料去向 + 五步 ===== -->
+  <!-- ===== 如何工作 ===== -->
   <section id="flow">
-    <h2>流程</h2>
-    <p class="prose mute" style="font-size:var(--fs-m);margin-bottom:var(--sp-4)">下面每一步都在你的电脑上完成。我们看不到资料、密钥和申报内容。</p>
-    <h3 class="subh">资料去了哪里</h3>
-    <div class="flow">
-      <div class="cell">
-        <div class="t">这台电脑</div>
-        <div class="row"><span class="mono">说明书.pdf</span></div>
-        <div class="sub">第 2 页留在本机</div>
-      </div>
-      <div class="cell">
-        <div class="t">你的模型</div>
-        <div>只接收这一页</div>
-        <div class="sub">文字，或扫描页的图片</div>
-      </div>
-      <div class="cell">
-        <div class="t">出处核对</div>
-        <div class="row"><span class="keep">220V</span><span class="keep-tag">保留</span></div>
-        <div class="quote">第 2 页有原句</div>
-        <div class="row" style="margin-top:var(--sp-1)"><span class="drop">110V</span><span class="drop-tag">丢掉</span></div>
-        <div class="quote">没有出处</div>
-      </div>
-      <div class="cell">
-        <div class="t">申报网页</div>
-        <div class="row"><span class="w6">额定电压</span><span>220V</span></div>
-        <div class="quote">说明书.pdf · 第 2 页 · 「额定电压：220V」</div>
-        <div class="row" style="margin-top:var(--sp-1)"><span class="w6">验证码</span><span class="mute">由你填写</span></div>
-        <div class="quote">提交申报 · 程序不点击</div>
-      </div>
-    </div>
-    <p class="flow-cap">
-      <span class="w6">没有出处的值会被丢掉</span>
-      <span class="mute">220V 能在第 2 页的原句里找到，所以保留。110V 没有出处，不写进表。</span>
-    </p>
-
-    <h3 class="subh">一次只填当前这一页</h3>
+    <h2>如何工作</h2>
     <ol class="steps prose">
       <li class="step"><span class="n">1</span><div>
-        <div class="h">先填你自己的模型</div>
-        <div class="d">填写模型地址和模型名。需要密钥就保存在本机。没有配好模型，不能抽取正式资料。扫描件和照片要使用能看图的模型。</div></div></li>
+        <div class="h">配置自己的 AI 模型</div>
+        <div class="d">填写模型接口地址、模型名称和密钥。密钥保存在本机。</div></div></li>
       <li class="step"><span class="n">2</span><div>
-        <div class="h">只把这一页发给该模型</div>
-        <div class="d">PDF、Word 先在本机读出文字。扫描版 PDF 和 JPEG 先在本机变成图片，再发给你的视觉模型转写。转写结果当作这一页的原文。</div></div></li>
+        <div class="h">读取资料，提取字段</div>
+        <div class="d">PDF、Word 在本机读取；扫描件先在本机转换为图片。每次只处理申报网页当前显示的页面。</div></div></li>
       <li class="step"><span class="n">3</span><div>
-        <div class="h">对不上原文的值不保留</div>
-        <div class="d">抄下来的值必须带出处：哪一份文件、第几页、原文那一句。这句话必须在该页里，值必须能从这句话得到。对不上就留空。两处资料不一致就标成冲突，值留空，每个候选各自带着出处。</div></div></li>
+        <div class="h">核对每个字段的出处</div>
+        <div class="d">填写的值必须能从对应文件的原文中找到依据，并记录文件名、页码和原句。</div></div></li>
       <li class="step"><span class="n">4</span><div>
-        <div class="h">你先登录，再点「抽出并填写」</div>
-        <div class="d">你在打开的窗口里自己登录，再自己翻页。看到新的一页，点「抽出并填写」。程序只填这一页看得见的格子，不翻页，也不点提交。读回不一致的留空。</div></div></li>
+        <div class="h">自动填写当前页面</div>
+        <div class="d">人工登录网站到目标页面，再点击「抽出并填写」。程序只填写当前可见、且能够正确读回的字段，不自动翻页或提交。</div></div></li>
       <li class="step"><span class="n">5</span><div>
-        <div class="h">你补空格，你来提交</div>
-        <div class="d">登录、验证码、短信，以及每次刷新编号都会变的格子，程序留空。右边会标出这一页填了几项、哪些留空。你补完并核对后，自己点击提交。</div></div></li>
+        <div class="h">人工核对，再提交</div>
+        <div class="d">检查填写结果和原文出处，补全留空项，确认所有内容后，人工亲自点击提交。</div></div></li>
     </ol>
   </section>
 
-  <!-- ===== 由你完成 ===== -->
-  <section id="todo">
-    <h2>由你完成</h2>
-    <div class="todo">
-      <div><div class="h">模型与密钥</div><div class="d">向你单位允许的服务申请接口。地址、模型名和密钥只放在这台电脑上，不要贴进聊天软件。</div></div>
-      <div><div class="h">登录和验证</div><div class="d">账号、密码、验证码、短信验证由你在申报网站上完成。程序不收集这些内容。</div></div>
-      <div><div class="h">留空的格子</div><div class="d">没有出处、互相冲突、读不回、或控件编号不稳定的项目，都留在页面上给你手填。</div></div>
-      <div><div class="h">核对和提交</div><div class="d">对照出处和原页图片。推断出的英文名称、产品类别、产品简介要你确认。提交按钮由你点击。</div></div>
-    </div>
-  </section>
-
-  <!-- ===== 风险：按严重程度排序，第一条默认展开 ===== -->
+  <!-- ===== 隐私与风险 ===== -->
   <section id="risks">
-    <h2>风险</h2>
-    <p class="prose mute" style="font-size:var(--fs-m);margin-bottom:var(--sp-3)">提交前请逐项看过。这些情况程序不会替你消除。</p>
+    <h2>隐私与风险说明</h2>
+    <p class="prose" style="font-size:var(--fs-m);margin-bottom:var(--sp-2)">资料保存在你的服务器，但可能发送给你配置的模型。</p>
 
-    <details open>
-      <summary><span class="dot amber"></span><span class="ttl">资料会到达你填写的模型</span><span class="one">页面文字、扫描页图片会发给那个地址，该地址的运营方能看到内容。</span></summary>
-      <div class="more">我们的服务器不接收这些内容。地址若是公有云，资料就离开了你的网络。保密单位请使用本单位允许的内网或已签约接口。</div>
+    <details>
+      <summary><h3 class="ttl">模型接口</h3></summary>
+      <div class="more">文件文字或扫描页图片会发送到你填写的模型地址。使用公有云模型时，资料会离开本机，请确认服务方的数据处理政策及单位保密要求。</div>
     </details>
     <details>
-      <summary><span class="dot amber"></span><span class="ttl">看图模型可能认错字</span><span class="one">扫描件和照片的出处核对，对着的是转写出来的文字。</span></summary>
-      <div class="more">模型把「220V」看成别的字时，核对仍可能通过。核对页会同时给出页码、原句和那一页的图，请你对照。</div>
+      <summary><h3 class="ttl">推断内容</h3></summary>
+      <div class="more">英文名称、产品类别、简介等推断信息，需要你确认后才能使用。</div>
     </details>
     <details>
-      <summary><span class="dot amber"></span><span class="ttl">纯文字模型读不了扫描件</span><span class="one">不能看图的模型收不到字。</span></summary>
-      <div class="more">这类文件会没有可用原文，对应字段留空。</div>
+      <summary><h3 class="ttl">网站兼容性</h3></summary>
+      <div class="more">网站改版、动态字段或特殊控件可能导致部分字段无法填写，请手动补全。</div>
     </details>
     <details>
-      <summary><span class="dot amber"></span><span class="ttl">推断不是原文</span><span class="one">英文名称、产品类别、产品简介可以标成推断。</span></summary>
-      <div class="more">它们没有伪装成引用。未经你确认，不能当作已核对的事实。</div>
-    </details>
-    <details>
-      <summary><span class="dot amber"></span><span class="ttl">网页结构可能对不上</span><span class="one">程序只填当前看得见、并且读回一致的格子。</span></summary>
-      <div class="more">翻到下一页后，再点一次「抽出并填写」。门户改版、验证码、动态编号会留空，由你在页面上补完。</div>
-    </details>
-    <details>
-      <summary><span class="dot amber"></span><span class="ttl">网站可能限制自动填写</span><span class="one">请确认你有权使用该账号，并且这种填写方式符合该网站的规则。</span></summary>
-      <div class="more">程序按你打开的网址填写当前这一页，不翻页，也不点提交。</div>
+      <summary><h3 class="ttl">网站规则</h3></summary>
+      <div class="more">使用前请确认你有权操作该账号，且自动填写方式符合网站规定。</div>
     </details>
   </section>
 
-  <!-- ===== 责任边界：必须存在，但默认收起 ===== -->
-  <section id="bounds" style="padding-top:var(--sp-6)">
+  <!-- ===== 责任边界 ===== -->
+  <section id="bounds">
     <details>
-      <summary class="plain-sum"><span class="ttl">责任边界</span></summary>
-      <ul class="bounds">
-        <li>本程序是安装在你电脑上的填写辅助，不代理申报，不构成法律、合规或审计意见，也不承诺审核通过。</li>
-        <li>本程序的提供者不接收你的资料、密钥、页面内容和申报结果，也不代你保管账号。</li>
-        <li>程序不编造缺少出处的值，不点击提交，也不代替你勾选「内容真实有效」一类声明。</li>
-        <li>不保证每一个网站都能自动填完，不保证模型转写、引用或自动步骤始终正确。</li>
-        <li>你核对并自行提交后，申报内容、账号使用以及由此产生的后果，由你承担。</li>
-        <li>因资料本身有误、模型误读、你修改了内容，或你自行提交，而产生的损失，本程序的提供者不承担责任。</li>
-      </ul>
+      <summary class="plain-sum"><h2 class="ttl">责任边界</h2></summary>
+      <div class="more">
+        <p>Apple Fill 是本地运行的表格填写辅助工具，不代办申报，不提供法律、合规或审计意见，也不保证申报通过或自动填写始终正确。</p>
+        <p style="margin-top:var(--sp-2)">使用者应自行核实资料、填写内容、账号权限及网站规则，并对最终提交的内容和操作后果负责。程序提供者不接收或代管用户资料、密钥、账号及申报结果。</p>
+      </div>
     </details>
   </section>
 
@@ -346,14 +462,14 @@
         <div class="tip">如果提示无法验证开发者：右键点击「启动AppleFill.command」，选「打开」，再确认一次。</div>
       </div>
     </div>
-    <p class="updated">当前版本更新于 2026/10/20。</p>
+    <p class="updated">当前版本：2026 年 10 月 20 日</p>
   </section>
 
 </main>
 
 <footer>
   <div class="wrap">
-    <p>Apple Fill 在本机运行。<a href="#practice" id="practice-link">练习申报页</a>是另一份页面，只用来确认填写会停在提交之前。</p>
+    <p>Apple Fill 在本机运行。<a href="#practice" id="practice-link">演示申报页</a>仅用于验证填写流程，程序不会代替你提交申报。</p>
   </div>
 </footer>
 
@@ -368,8 +484,8 @@
       mac: "https://github.com/renjianfj163/apple-fill/releases/download/dev-build/AppleFill-Mac-AppleSilicon.zip"
     },
     sha:  {
-      win: "2c99984a63a09b518c82641fcf2369f88d2106c6efd00ce2fe3502fe949f807c",
-      mac: "2de6cf0af9f8c4558f15a892b836073fed19b3649a8a7ea8bb9919ec19111447"
+      win: "",
+      mac: ""
     },
     practice: ""
   };
@@ -399,6 +515,14 @@
     // 练习页
     var p = document.getElementById("practice-link");
     if (p) p.href = CONFIG.practice || "#top";
+
+    // 从导航点到「责任边界」时，把折叠打开
+    var bounds = document.querySelector("#bounds details");
+    function openBounds() {
+      if (location.hash === "#bounds" && bounds) bounds.open = true;
+    }
+    openBounds();
+    window.addEventListener("hashchange", openBounds);
   })();
 </script>
 </body>
