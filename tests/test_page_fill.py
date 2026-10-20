@@ -44,11 +44,26 @@ def test_plan_uses_only_the_controls_on_this_page():
     )
     assert [item["name"] for item in planned["filled"]] == ["productName"]
     assert planned["filled"][0]["value"] == "青苹空气净化器"
+    assert planned["filled"][0]["path"] == "fields.productName"
+    assert planned["filled"][0]["sources"] == []
     reasons = {item["label"]: item["reason"] for item in planned["skipped"]}
     assert "资料里没有" in reasons["型号"]
     assert "推断" in reasons["英文名称"]
     assert reasons["产品名称"] == "这一页里这项已经有一格"
     assert "额定电压" not in {item["label"] for item in planned["filled"]}
+
+
+def test_plan_names_the_file_and_quote():
+    product = _product()
+    product["documents"] = [{"docId": "d1", "filename": "说明书.pdf", "path": "D:/secret/说明书.pdf"}]
+    product["fields"]["productName"]["sources"] = [
+        {"docId": "d1", "page": 2, "quote": "产品名称：青苹空气净化器"}
+    ]
+    planned = plan_page_fills(product, [{"name": "productName", "label": "产品名称", "type": "text"}])
+    assert planned["filled"][0]["path"] == "fields.productName"
+    assert planned["filled"][0]["sources"] == [
+        {"file": "说明书.pdf", "page": 2, "quote": "产品名称：青苹空气净化器"}
+    ]
 
 
 @pytest.fixture
@@ -118,5 +133,21 @@ def test_each_click_fills_only_the_visible_page(tmp_path: Path, practice_form: s
         assert after["description"].startswith("用于室内")
         assert after["ratedVoltage"] == "220V"
         assert after["submitted"] is False
+        name = next(item for item in first["filled"] if item["label"] == "产品名称")
+        assert name["path"] == "fields.productName"
+        assert set(name["sources"][0]) == {"file", "page", "quote"}
+        assert name["sources"][0]["file"] == "spec.docx"
+        assert name["sources"][0]["quote"]
+        marked = session.evaluate("() => document.getElementById('productName').getAttribute('data-apple-fill')")
+        assert marked == "fields.productName"
+        assert session.evaluate("() => document.getElementById('productName').value") == "青苹空气净化器"
+        session.evaluate("() => { document.getElementById('ratedVoltage').focus(); return true; }")
+        assert session.focused_fill() == "fields.specs.ratedVoltage"
+        session.evaluate(
+            "() => { document.getElementById('ratedVoltage').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); return true; }"
+        )
+        assert session.focused_fill() == "fields.specs.ratedVoltage"
+        session.evaluate("() => { document.getElementById('productNameEn').focus(); return true; }")
+        assert session.focused_fill() == ""
     finally:
         session.stop()

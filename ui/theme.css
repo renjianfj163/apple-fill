@@ -248,6 +248,59 @@ strong, .w6 { font-weight: 600; }
 .blank .field  { font-weight: 600; }
 .blank .reason { grid-column: 2; font-size: var(--fs-s); color: var(--mute); }
 
+.cites { flex-direction: column; gap: var(--sp-1); }
+.cites .title { font-size: var(--fs-s); color: var(--mute); }
+.cite {
+  border: var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+.cite.lit { border-color: var(--green); }
+.cite.lit .field { color: var(--green); }
+.cite-main {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: var(--sp-1);
+  width: 100%;
+  padding: var(--sp-1) var(--sp-2);
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cite-main:focus {
+  outline: 1px solid var(--green);
+  outline-offset: -1px;
+}
+.cite-main .field { grid-column: 1; grid-row: 1; font-weight: 600; }
+.cite-main .value {
+  grid-column: 1;
+  grid-row: 2;
+  font-size: var(--fs-s);
+  color: var(--mute);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cite-main .more {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-size: var(--fs-s);
+  color: var(--mute);
+}
+.cite .quotes { display: none; padding: 0 var(--sp-2) var(--sp-1); }
+.cite.open .quotes { display: block; }
+.cite .where { font-size: var(--fs-s); font-weight: 600; }
+.cite .quote {
+  font-size: var(--fs-s);
+  color: var(--mute);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .hint {
   font-size: var(--fs-s);
   color: var(--mute);
@@ -429,6 +482,7 @@ body.desk {
 
 .files-wrap,
 .blanks,
+.cites,
 .hint { display: none; }
 
 .desk[data-state="files"] .files-wrap,
@@ -461,6 +515,7 @@ body.desk {
 
 body.live .preview-only { display: none; }
 .desk.has-blanks .blanks { display: flex; }
+.desk.has-cites .cites { display: flex; }
 .desk[data-state="done"] .blanks { display: flex; }
 .desk[data-state="done"] .hint,
 body.desk.live[data-state="ready"] .hint { display: block; }

@@ -15,7 +15,7 @@ from urllib.parse import unquote, urlparse
 from apple_fill.desk_store import data_root, import_adapter, list_adapters, load_run_product, panel_summary, run_dir
 from apple_fill.generate_adapter import controls_from_url, render_adapter
 from apple_fill.llm_settings import public_llm, resolve_llm, save_llm
-from apple_fill.page_fill import close_desk_browser, desk_browser, plan_page_fills
+from apple_fill.page_fill import close_desk_browser, current_desk_browser, desk_browser, plan_page_fills
 
 _MAX_BODY = 40 * 1024 * 1024
 
@@ -89,6 +89,10 @@ class DeskHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/llm":
             self._json(200, public_llm(data_root()))
+            return
+        if path == "/api/browser/focus":
+            session = current_desk_browser()
+            self._json(200, {"path": "" if session is None else session.focused_fill()})
             return
         if path in {"/", "/desk"}:
             self.send_response(302)

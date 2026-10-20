@@ -67,6 +67,18 @@ function visibleTextNodes() {
   const nodes = Array.from(document.querySelectorAll("input, textarea, select"));
   return nodes.filter((node) => allowed[typeOf(node)] && isShown(node));
 }
+function watchFocus() {
+  if (window.__appleFillWatch) return;
+  window.__appleFillWatch = true;
+  window.__appleFillFocus = "";
+  function note(node) {
+    if (!node || !node.getAttribute) return;
+    const path = node.getAttribute("data-apple-fill") || "";
+    if (path) window.__appleFillFocus = path;
+  }
+  document.addEventListener("focusin", (event) => note(event.target), true);
+  document.addEventListener("pointerdown", (event) => note(event.target), true);
+}
 function writeNode(node, item) {
   const value = String(item.value == null ? "" : item.value);
   const tag = node.tagName.toLowerCase();
@@ -106,16 +118,19 @@ LIST_JS = "() => {\n" + _DOM + """
 
 APPLY_JS = "(items) => {\n" + _DOM + """
   const nodes = visibleTextNodes();
-  return items.map((item) => {
+  const wrote = items.map((item) => {
     let node = nodes[item.index];
     if (!node || (node.getAttribute("name") || "") !== (item.name || "")) {
       node = nodes.find((candidate) => item.name && (candidate.getAttribute("name") || "") === item.name) || null;
     }
     if (!node) return { ok: false, label: item.label, expected: item.value };
-    const wrote = writeNode(node, item);
-    wrote.label = item.label;
-    return wrote;
+    const result = writeNode(node, item);
+    result.label = item.label;
+    if (result.ok && item.path) node.setAttribute("data-apple-fill", String(item.path));
+    return result;
   });
+  watchFocus();
+  return wrote;
 }
 """
 
@@ -133,6 +148,33 @@ def _field(product: dict[str, Any], source: str) -> dict[str, Any] | None:
             if isinstance(item, dict) and item.get("key") == parts[2]:
                 return item
     return None
+
+
+def _shown_sources(product: dict[str, Any], field: dict[str, Any]) -> list[dict[str, Any]]:
+    names: dict[str, str] = {}
+    for document in product.get("documents") or []:
+        if not isinstance(document, dict):
+            continue
+        doc_id = str(document.get("docId") or "")
+        if doc_id:
+            names[doc_id] = str(document.get("filename") or doc_id)
+    shown: list[dict[str, Any]] = []
+    for source in field.get("sources") or []:
+        if not isinstance(source, dict):
+            continue
+        quote = str(source.get("quote") or "").strip()
+        if not quote:
+            continue
+        doc_id = str(source.get("docId") or "")
+        item: dict[str, Any] = {
+            "file": names.get(doc_id) or doc_id or "资料",
+            "quote": quote[:1000],
+        }
+        page = source.get("page")
+        if type(page) is int and page >= 1:
+            item["page"] = page
+        shown.append(item)
+    return shown
 
 
 def _skip_reason(field: dict[str, Any] | None) -> str:
@@ -188,6 +230,8 @@ def plan_page_fills(product: dict[str, Any], controls: list[dict[str, Any]]) -> 
                 "name": str(control.get("name") or ""),
                 "label": shown,
                 "value": value,
+                "path": source,
+                "sources": _shown_sources(product, field),
                 "action": "select" if kind == "select" else "fill",
             }
         )
@@ -210,7 +254,20 @@ def fill_open_page(page: Any, product: dict[str, Any]) -> dict[str, Any]:
     skipped = list(plan["skipped"])
     if not plan["filled"]:
         return {"filled": [], "skipped": skipped, "mismatches": [], "empty": False}
-    results = page.evaluate(APPLY_JS, plan["filled"])
+    results = page.evaluate(
+        APPLY_JS,
+        [
+            {
+                "index": item["index"],
+                "name": item["name"],
+                "label": item["label"],
+                "value": item["value"],
+                "path": item["path"],
+                "action": item["action"],
+            }
+            for item in plan["filled"]
+        ],
+    )
     if not isinstance(results, list):
         raise ValueError("这一页没有写成")
     filled: list[dict[str, str]] = []
@@ -225,7 +282,14 @@ def fill_open_page(page: Any, product: dict[str, Any]) -> dict[str, Any]:
         if not result.get("ok"):
             mismatches.append(f"{item['label']}：页面读回的值不是「{item['value']}」")
             continue
-        filled.append({"label": item["label"], "value": item["value"]})
+        filled.append(
+            {
+                "label": item["label"],
+                "value": item["value"],
+                "path": item["path"],
+                "sources": item.get("sources") or [],
+            }
+        )
     if len(results) < len(plan["filled"]):
         for item in plan["filled"][len(results) :]:
             mismatches.append(f"{item['label']}：页面读回的值不是「{item['value']}」")
@@ -342,6 +406,29 @@ class PageSession:
             raise RuntimeError("这一页没有写成")
         return result
 
+    def focused_fill(self) -> str:
+        """Return the filled field the person just clicked, then forget it."""
+
+        def job() -> str:
+            page = self._page
+            if page is None or page.is_closed():
+                return ""
+            try:
+                value = page.evaluate(
+                    "() => { const value = window.__appleFillFocus || ''; window.__appleFillFocus = ''; return String(value); }"
+                )
+            except Exception:
+                return ""
+            return str(value or "")
+
+        if not self._thread.is_alive() or self._start_error is not None:
+            return ""
+        try:
+            result = self._call(job)
+        except Exception:
+            return ""
+        return str(result or "")
+
     def evaluate(self, script: str) -> Any:
         def job() -> Any:
             if self._page is None or self._page.is_closed():
@@ -369,6 +456,14 @@ class PageSession:
 
 _session: PageSession | None = None
 _session_lock = threading.Lock()
+
+
+def current_desk_browser() -> PageSession | None:
+    with _session_lock:
+        session = _session
+        if session is None or not session._thread.is_alive():
+            return None
+        return session
 
 
 def desk_browser() -> PageSession:

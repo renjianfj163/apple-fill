@@ -46,6 +46,11 @@
     </div>
 
     <div class="status" id="status"><span class="dot"></span><span id="statusText">先放入资料</span></div>
+
+    <div class="cites" id="cites">
+      <div class="title">写上的项</div>
+      <div id="citeList"></div>
+    </div>
     <div id="importer" hidden>
       <textarea id="adapterText" aria-label="适配包" placeholder="粘贴适配包" spellcheck="false"></textarea>
       <div class="add-more" id="pickAdapter">或选择 adapter.yaml</div>
@@ -126,6 +131,8 @@
   var siteUrl = "";
   var pageNote = "";
   var pageWarn = false;
+  var cites = [];
+  var litPath = "";
   var opening = false;
   var openTicket = 0;
   var armedTimer = 0;
@@ -233,6 +240,112 @@
     });
   }
 
+  function escapeAttr(value) {
+    return escapeText(value).replace(/"/g, "&quot;");
+  }
+
+  function copySources(list) {
+    var out = [];
+    (list || []).forEach(function (source) {
+      if (!source || !source.quote) return;
+      out.push({
+        file: source.file || "资料",
+        page: source.page || 0,
+        quote: String(source.quote)
+      });
+    });
+    return out;
+  }
+
+  function renderCites() {
+    var list = document.getElementById("citeList");
+    if (!cites.length) {
+      document.body.classList.remove("has-cites");
+      list.innerHTML = "";
+      return;
+    }
+    document.body.classList.add("has-cites");
+    var html = "";
+    cites.forEach(function (item) {
+      var cls = "cite" + (item.open ? " open" : "") + (item.path === litPath ? " lit" : "");
+      html += '<article class="' + cls + '" data-path="' + escapeAttr(item.path) + '">';
+      html += '<button type="button" class="cite-main" aria-expanded="' + (item.open ? "true" : "false") + '">';
+      html += '<span class="field">' + escapeText(item.label) + "</span>";
+      html += '<span class="value" title="' + escapeAttr(item.value) + '">' + escapeText(item.value) + "</span>";
+      html += '<span class="more">出处</span></button><div class="quotes">';
+      if (!item.sources.length) {
+        html += '<p class="quote">没有留下原句</p>';
+      } else {
+        item.sources.forEach(function (source) {
+          var where = source.file || "资料";
+          if (source.page) where += " · 第 " + source.page + " 页";
+          html += '<p class="where">' + escapeText(where) + "</p>";
+          html += '<p class="quote">' + escapeText(source.quote) + "</p>";
+        });
+      }
+      html += "</div></article>";
+    });
+    list.innerHTML = html;
+  }
+
+  function clearCites() {
+    cites = [];
+    litPath = "";
+    renderCites();
+  }
+
+  function rememberCites(items) {
+    (items || []).forEach(function (item) {
+      if (!item || !item.path) return;
+      var sources = copySources(item.sources);
+      var found = null;
+      for (var i = 0; i < cites.length; i++) {
+        if (cites[i].path === item.path) found = cites[i];
+      }
+      if (found) {
+        found.label = item.label || found.label;
+        found.value = item.value == null ? "" : String(item.value);
+        found.sources = sources;
+        return;
+      }
+      cites.push({
+        path: item.path,
+        label: item.label || item.path,
+        value: item.value == null ? "" : String(item.value),
+        sources: sources,
+        open: false
+      });
+    });
+    renderCites();
+  }
+
+  function lightCite(path) {
+    if (!path) return;
+    litPath = path;
+    var hit = null;
+    var rows = document.querySelectorAll("#citeList .cite");
+    for (var i = 0; i < rows.length; i++) {
+      var on = rows[i].getAttribute("data-path") === path;
+      rows[i].classList.toggle("lit", on);
+      if (on) hit = rows[i];
+    }
+    if (hit && hit.scrollIntoView) hit.scrollIntoView({ block: "nearest" });
+  }
+
+  function bindFrameFocus() {
+    var doc;
+    try { doc = frame.contentDocument; } catch (e) { doc = null; }
+    if (!doc || doc.__appleFillWatch) return;
+    doc.__appleFillWatch = true;
+    function note(node) {
+      if (!node || !node.getAttribute) return;
+      var path = node.getAttribute("data-apple-fill") || "";
+      if (path) lightCite(path);
+    }
+    doc.addEventListener("focusin", function (event) { note(event.target); }, true);
+    doc.addEventListener("pointerdown", function (event) { note(event.target); }, true);
+  }
+
   function shortName(name) {
     if (name.length <= 24) return name;
     return name.slice(0, 10) + "…" + name.slice(-10);
@@ -335,6 +448,7 @@
     opening = false;
     openTicket += 1;
     closeBrowser();
+    clearCites();
     document.body.classList.remove("has-blanks");
     caseName.textContent = "未命名的一单";
     importer.hidden = true;
@@ -372,6 +486,7 @@
     extracted = null;
     pageNote = "";
     pageWarn = false;
+    clearCites();
     document.body.classList.remove("has-blanks");
     paintLive();
     if (!rejected.length) return;
@@ -464,6 +579,7 @@
     extracted = null;
     pageNote = "";
     pageWarn = false;
+    clearCites();
     document.body.classList.remove("has-blanks");
     url.value = parsed.href;
     setSecure(parsed.protocol === "https:");
@@ -549,6 +665,7 @@
     }).then(function (res) { return readJson(res, "这一页没有填上"); })
       .then(function (data) {
         noteFrom(data);
+        rememberCites(data.filled || []);
         paintLive();
       })
       .catch(function (err) { failStatus(err, "本机程序没有开，还不能填写"); });
@@ -692,8 +809,13 @@
             }
           }
           if (!node || writeNode(node, item) == null) mismatches.push(item.label);
-          else wrote.push(item);
+          else {
+            if (item.path) node.setAttribute("data-apple-fill", item.path);
+            wrote.push(item);
+          }
         });
+        bindFrameFocus();
+        rememberCites(wrote);
         noteFrom({
           filled: wrote,
           skipped: data.skipped || [],
@@ -772,6 +894,7 @@
         extracted = null;
         pageNote = "";
         pageWarn = false;
+        clearCites();
         document.body.classList.remove("has-blanks");
         paintLive();
       } else {
@@ -895,6 +1018,7 @@
     extracted = null;
     pageNote = "";
     pageWarn = false;
+    clearCites();
     document.body.classList.remove("has-blanks");
     paintLive();
   });
@@ -1074,6 +1198,31 @@
     var stored = JSON.parse(localStorage.getItem("apple-fill-adapters") || "[]");
     if (Array.isArray(stored)) adapters = stored;
   } catch (e) {}
+
+  document.getElementById("citeList").addEventListener("click", function (event) {
+    var button = event.target.closest(".cite-main");
+    if (!button) return;
+    var row = button.closest(".cite");
+    if (!row) return;
+    var path = row.getAttribute("data-path") || "";
+    for (var i = 0; i < cites.length; i++) {
+      if (cites[i].path === path) cites[i].open = !cites[i].open;
+    }
+    renderCites();
+  });
+
+  frame.addEventListener("load", bindFrameFocus);
+
+  var focusPoll = false;
+  setInterval(function () {
+    if (focusPoll || !live || document.body.dataset.site !== "window" || !cites.length) return;
+    focusPoll = true;
+    fetch(API + "/api/browser/focus")
+      .then(function (res) { return readJson(res, ""); })
+      .then(function (data) { if (data && data.path) lightCite(data.path); })
+      .catch(function () {})
+      .then(function () { focusPoll = false; });
+  }, 400);
 
   if (live) {
     document.body.classList.add("live");
