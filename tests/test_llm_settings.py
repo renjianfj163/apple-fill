@@ -38,16 +38,17 @@ def test_each_vendor_keeps_its_own_key(tmp_path: Path):
     assert view["keySlots"] == ["deepseek", "qwen"]
 
 
-def test_saved_labels_win_over_the_startup_model(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_labels_mode_is_no_longer_a_choice(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("APPLE_FILL_LLM_URL", "https://api.deepseek.com/chat/completions")
     monkeypatch.setenv("APPLE_FILL_LLM_MODEL", "deepseek-chat")
     monkeypatch.setenv("APPLE_FILL_LLM_API_KEY", "sk-from-env")
     assert resolve_llm(tmp_path)[1] == "deepseek-chat"
-    save_llm(tmp_path, {"mode": "labels"})
+    with pytest.raises(ValueError, match="请选择模型"):
+        save_llm(tmp_path, {"mode": "labels"})
+    (tmp_path / "llm.json").write_text(json.dumps({"mode": "labels"}), encoding="utf-8")
     assert resolve_llm(tmp_path) is None
     view = public_llm(tmp_path)
     assert view["mode"] == "labels"
-    assert view["fromEnv"] is False
     assert "sk-from-env" not in json.dumps(view)
 
 

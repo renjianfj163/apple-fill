@@ -69,9 +69,8 @@
       <span class="saved" id="saved" hidden>已存到 runs\2026-10-20_xxx</span>
       <div class="settings-anchor">
         <div class="llm-sheet" id="llmSheet" hidden role="dialog" aria-label="抽取设置">
-          <label>抽取方式
-            <select id="llmChoice" aria-label="抽取方式">
-              <option value="labels">按标签抽取，不用大模型</option>
+          <label>模型
+            <select id="llmChoice" aria-label="模型">
               <option value="deepseek" data-model="deepseek-chat">DeepSeek</option>
               <option value="qwen" data-model="qwen-plus">通义千问</option>
               <option value="glm" data-model="glm-4-flash">智谱 GLM</option>
@@ -89,7 +88,7 @@
           <label id="llmKeyRow">密钥
             <input id="llmKey" type="password" autocomplete="off" placeholder="留空则保持已保存的密钥" aria-label="密钥">
           </label>
-          <p class="mute llm-note" id="llmNote">按资料里的标签抄写，不调用大模型。</p>
+          <p class="mute llm-note" id="llmNote">密钥只留在这台电脑上。商用模型请填你自己的密钥。</p>
           <button class="btn-open" type="button" id="llmSave">保存</button>
         </div>
         <button class="btn-quiet settings" type="button" id="settings" aria-expanded="false" aria-controls="llmSheet">设置</button>
@@ -137,7 +136,7 @@
   var llmKey = document.getElementById("llmKey");
   var llmNote = document.getElementById("llmNote");
   var settingsBtn = document.getElementById("settings");
-  var llmState = { models: {}, keySlots: [], customUrl: "", fromEnv: false, preset: "", model: "", mode: "labels" };
+  var llmState = { models: {}, keySlots: [], customUrl: "", fromEnv: false, preset: "deepseek", model: "", mode: "preset" };
 
   function setSecure(on) {
     omnibox.classList.toggle("secure", on);
@@ -699,11 +698,9 @@
   }
 
   function syncLlmFields() {
-    var choice = llmChoice.value;
-    var labelsOnly = choice === "labels";
-    llmUrlRow.hidden = choice !== "custom";
-    llmModelRow.hidden = labelsOnly;
-    llmKeyRow.hidden = labelsOnly;
+    llmUrlRow.hidden = llmChoice.value !== "custom";
+    llmModelRow.hidden = false;
+    llmKeyRow.hidden = false;
   }
 
   function closeLlm() {
@@ -714,10 +711,6 @@
   function paintLlmNote() {
     var choice = llmChoice.value;
     var slots = llmState.keySlots || [];
-    if (choice === "labels") {
-      llmNote.textContent = "按资料里的标签抄写，不调用大模型。";
-      return;
-    }
     if (slots.indexOf(choice) >= 0) {
       llmNote.textContent = "这把密钥已保存在本机。留空则不改。";
       return;
@@ -735,12 +728,12 @@
       var option = llmChoice.querySelector('option[value="' + item.id + '"]');
       if (option && item.model) option.setAttribute("data-model", item.model);
     });
-    var choice = "labels";
+    var choice = "deepseek";
     if (llmState.mode === "custom" || (llmState.mode === "env" && llmState.customUrl && !llmState.preset)) choice = "custom";
     else if (llmState.preset) choice = llmState.preset;
     llmChoice.value = choice;
     if (choice === "custom") llmUrl.value = llmState.customUrl || "";
-    if (choice !== "labels") llmModel.value = llmState.model || presetModel(choice);
+    llmModel.value = llmState.model || presetModel(choice);
     llmKey.value = "";
     syncLlmFields();
     paintLlmNote();
@@ -750,7 +743,7 @@
     var choice = llmChoice.value;
     var remembered = (llmState.models || {})[choice];
     if (choice === "custom") llmUrl.value = llmState.customUrl || "";
-    if (choice !== "labels") llmModel.value = remembered || presetModel(choice);
+    llmModel.value = remembered || presetModel(choice);
     llmKey.value = "";
     syncLlmFields();
     paintLlmNote();
@@ -775,7 +768,7 @@
   document.getElementById("llmSave").addEventListener("click", function () {
     var choice = llmChoice.value;
     var body = {
-      mode: choice === "labels" ? "labels" : (choice === "custom" ? "custom" : "preset"),
+      mode: choice === "custom" ? "custom" : "preset",
       preset: choice,
       model: llmModel.value.trim(),
       url: llmUrl.value.trim(),
@@ -795,7 +788,7 @@
     }).then(function (data) {
       applyLlm(data);
       closeLlm();
-      showSaved(data.mode === "labels" ? "已保存，抽出时按标签" : "已保存，抽出时用这个模型");
+      showSaved("已保存，抽出时用这个模型");
     }).catch(function (err) {
       var message = err && err.message ? err.message : "";
       llmNote.textContent = /fetch|network|failed/i.test(message) ? "本机程序没有开，还不能保存" : (message || "没有保存");

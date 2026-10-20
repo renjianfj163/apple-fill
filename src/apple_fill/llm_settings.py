@@ -155,7 +155,7 @@ def _endpoint_of(saved: dict[str, Any]) -> tuple[str, str, str] | None:
 
 
 def resolve_llm(root: Path) -> tuple[str, str, str] | None:
-    """Return url, model, api key. None means extract by labels."""
+    """Return url, model, api key. None means the desk has no model yet."""
     saved = _read(root)
     if saved is not None:
         return _endpoint_of(saved)
@@ -219,17 +219,15 @@ def _write(root: Path, payload: dict[str, Any]) -> None:
 
 def save_llm(root: Path, incoming: dict[str, Any]) -> dict[str, Any]:
     mode = str(incoming.get("mode") or "")
+    if mode == "labels":
+        raise ValueError("请选择模型")
     if mode not in _MODES:
-        raise ValueError("请选择抽取方式")
+        raise ValueError("请选择模型")
     previous = _read(root) or {}
     models = _models(previous)
     keys = _keys(previous)
     preset = str(incoming.get("preset") or "")
     url = str(previous.get("url") or "") if isinstance(previous.get("url"), str) else ""
-    if mode == "labels":
-        stored = {"mode": "labels", "preset": "", "url": url, "models": models, "keys": keys}
-        _write(root, stored)
-        return public_llm(root)
     if mode == "preset":
         if preset not in _PRESET_BY_ID:
             raise ValueError("没有这个模型")

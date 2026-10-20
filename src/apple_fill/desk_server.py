@@ -191,9 +191,9 @@ class DeskHandler(BaseHTTPRequestHandler):
             paths.append(target)
         picked = resolve_llm(data_root())
         if picked is None:
-            product = extract_product(paths, product_id, backend="labels")
-        else:
-            product = extract_product(paths, product_id, backend="llm", llm=picked)
+            self._json(400, {"error": "请先在设置里选择模型并保存"})
+            return
+        product = extract_product(paths, product_id, backend="llm", llm=picked)
         (final / "product.json").write_text(json.dumps(product, ensure_ascii=False, indent=2), encoding="utf-8")
         summary = panel_summary(product)
         relative = Path("runs") / final.name
