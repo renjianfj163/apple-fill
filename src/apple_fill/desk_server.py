@@ -12,9 +12,10 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
 
-from apple_fill.desk_store import data_root, import_adapter, list_adapters, panel_summary, run_dir
+from apple_fill.desk_store import data_root, import_adapter, list_adapters, load_run_product, panel_summary, run_dir
 from apple_fill.generate_adapter import controls_from_url, render_adapter
 from apple_fill.llm_settings import public_llm, resolve_llm, save_llm
+from apple_fill.page_fill import close_desk_browser, desk_browser, plan_page_fills
 
 _MAX_BODY = 40 * 1024 * 1024
 
@@ -138,11 +139,62 @@ class DeskHandler(BaseHTTPRequestHandler):
             if path == "/api/llm":
                 self._save_llm(body)
                 return
+            if path == "/api/browser/open":
+                self._browser_open(body)
+                return
+            if path == "/api/browser/fill":
+                self._browser_fill(body)
+                return
+            if path == "/api/browser/close":
+                close_desk_browser()
+                self._json(200, {"closed": True})
+                return
+            if path == "/api/fill-page":
+                self._fill_page(body)
+                return
         except Exception as exc:
             message = str(exc).strip() or "没有完成"
             self._json(400, {"error": message})
             return
         self._json(404, {"error": "没有这个地址"})
+
+    def _json_object(self, body: bytes) -> dict[str, Any]:
+        try:
+            payload = json.loads(body.decode("utf-8") or "{}")
+        except json.JSONDecodeError as exc:
+            raise ValueError("没有读懂") from exc
+        if not isinstance(payload, dict):
+            raise ValueError("没有读懂")
+        return payload
+
+    def _browser_open(self, body: bytes) -> None:
+        payload = self._json_object(body)
+        opened = desk_browser().open(str(payload.get("url") or ""))
+        self._json(200, {"url": opened})
+
+    def _browser_fill(self, body: bytes) -> None:
+        payload = self._json_object(body)
+        product = load_run_product(data_root(), str(payload.get("run") or ""))
+        self._json(200, desk_browser().fill_current(product))
+
+    def _fill_page(self, body: bytes) -> None:
+        payload = self._json_object(body)
+        product = load_run_product(data_root(), str(payload.get("run") or ""))
+        controls = payload.get("controls") if isinstance(payload.get("controls"), list) else []
+        clean: list[dict[str, str]] = []
+        for item in controls[:400]:
+            if not isinstance(item, dict):
+                continue
+            clean.append(
+                {
+                    "name": str(item.get("name") or "")[:120],
+                    "label": str(item.get("label") or "")[:200],
+                    "type": str(item.get("type") or "")[:40],
+                }
+            )
+        planned = plan_page_fills(product, clean)
+        planned["empty"] = not clean
+        self._json(200, planned)
 
     def _generate(self, body: bytes) -> None:
         payload = json.loads(body.decode("utf-8"))

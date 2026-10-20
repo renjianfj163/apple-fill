@@ -7,7 +7,8 @@
   --paper-deep: #ECE8DD;
   --green:      #1F4D3A;
   --ink:        #2B2B2B;
-  --mute:       #8A877F;
+  --mute:       #6B685F;   /* 辅助文字（对比度约 5:1，可用于小字） */
+  --mute-soft:  #8A877F;   /* 仅装饰：虚线框、图标，不用于文字 */
   --amber:      #B7791F;
   --brick:      #A33A2B;
 
@@ -61,7 +62,7 @@ strong, .w6 { font-weight: 600; }
 
 /* ---------- 文件盒子 ---------- */
 .dropzone {
-  border: 1px dashed var(--mute);
+  border: 1px dashed var(--mute-soft);
   border-radius: var(--radius);
   padding: var(--sp-4) var(--sp-2);
   text-align: center;
@@ -345,7 +346,7 @@ body.desk {
   width: 16px;
   height: 16px;
   flex: none;
-  color: var(--mute);
+  color: var(--mute-soft);
 }
 
 .omnibox.secure .lock { color: var(--green); }
@@ -408,7 +409,23 @@ body.desk {
 
 .desk[data-state="empty"] .blank-page,
 .desk[data-state="files"] .blank-page { display: flex; }
-.desk[data-site="open"] .blank-page { display: none; }
+.desk[data-site="open"] .blank-page,
+.desk[data-site="window"] .blank-page { display: none; }
+
+.window-note {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  text-align: center;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--fs-l);
+  line-height: 1.6;
+}
+.desk[data-site="window"] .window-note { display: flex; }
 
 .files-wrap,
 .blanks,
@@ -445,4 +462,5 @@ body.desk {
 body.live .preview-only { display: none; }
 .desk.has-blanks .blanks { display: flex; }
 .desk[data-state="done"] .blanks { display: flex; }
-.desk[data-state="done"] .hint { display: block; }
+.desk[data-state="done"] .hint,
+body.desk.live[data-state="ready"] .hint { display: block; }

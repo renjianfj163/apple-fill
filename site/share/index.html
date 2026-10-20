@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apple Fill · 发放说明</title>
+<meta name="robots" content="noindex">
+<style>
+  :root {
+    --paper:#F6F3EC; --paper-deep:#ECE8DD; --green:#1F4D3A; --ink:#2B2B2B;
+    --mute:#6B685F; --fs-s:12px; --fs-m:14px; --fs-l:16px; --fs-xl:20px;
+    --sp-1:8px; --sp-2:16px; --sp-3:24px; --sp-4:32px; --sp-8:96px;
+    --radius:6px; --line:1px solid var(--paper-deep);
+    --font-ui:"Microsoft YaHei UI","PingFang SC",sans-serif;
+    --font-mono:"Cascadia Mono","Consolas",monospace;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:var(--font-ui); font-size:var(--fs-l); color:var(--ink); background:var(--paper); line-height:1.8; }
+  a { color:var(--green); }
+  .wrap { max-width:960px; margin:0 auto; padding:0 var(--sp-3); }
+  .prose { max-width:680px; }
+  .nav { border-bottom:var(--line); }
+  .nav .wrap { display:flex; align-items:center; justify-content:space-between; height:56px; }
+  .brand { font-weight:600; color:var(--ink); text-decoration:none; }
+  h1 { font-size:var(--fs-xl); font-weight:600; line-height:1.4; margin:var(--sp-8) 0 var(--sp-3); }
+  p { margin-bottom:var(--sp-3); }
+  .mute { color:var(--mute); font-size:var(--fs-m); }
+  pre {
+    white-space:pre-wrap;
+    max-width:680px;
+    border:var(--line);
+    border-radius:var(--radius);
+    padding:var(--sp-2);
+    font-family:var(--font-mono);
+    font-size:var(--fs-s);
+    line-height:1.7;
+    color:var(--ink);
+  }
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="../">Apple Fill</a>
+    <a href="../">下载页</a>
+  </div>
+</header>
+<main class="wrap">
+  <h1 class="prose">Grok Bot 只负责把人带到这里</h1>
+  <p class="prose">Bot 不接收资料、密钥或申报内容。它的分享链接要在你自己的 Grok Bot 里生成，形式是 <code>https://x.ai/bot/…</code>。把下面这段贴进 Bot 的描述，然后在分享菜单里创建模板并复制公开链接。</p>
+  <pre>你是 Apple Fill 的发放说明。只告诉对方打开这个下载页，在自己的电脑上使用自己的模型。
+下载页：https://renjianfj163.github.io/apple-fill/
+不要索取、不要阅读、不要保存产品资料、密钥、账号或申报内容。
+Windows 解压后双击「启动AppleFill.bat」。Apple 芯片的 Mac 解压后双击「启动AppleFill.command」。</pre>
+  <p class="prose mute">这一页不放在下载首页上。</p>
+</main>
+</body>
+</html>

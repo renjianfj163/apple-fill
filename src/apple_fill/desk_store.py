@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from datetime import datetime
@@ -99,6 +100,26 @@ def import_adapter(root: Path, text: str) -> dict[str, Any]:
     if brief is None:
         raise ValueError("适配包没有写入")
     return brief
+
+
+def load_run_product(root: Path, relative: str) -> dict[str, Any]:
+    raw = str(relative or "").replace("\\", "/").strip().strip("/")
+    path = Path(raw)
+    if not raw or path.is_absolute() or ".." in path.parts:
+        raise ValueError("没有这一单")
+    runs = (root / "runs").resolve()
+    product = (root / raw / "product.json").resolve()
+    if product.name != "product.json" or not product.is_relative_to(runs):
+        raise ValueError("没有这一单")
+    if not product.is_file():
+        raise ValueError("还没有抽出这一单")
+    try:
+        loaded = json.loads(product.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError("这一单的资料读不了") from exc
+    if not isinstance(loaded, dict):
+        raise ValueError("这一单的资料读不了")
+    return loaded
 
 
 def run_dir(root: Path, product_id: str) -> Path:

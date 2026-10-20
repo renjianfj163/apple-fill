@@ -25,6 +25,7 @@
     </form>
     <div class="viewport">
       <div class="blank-page">输入网址，开始新的一单</div>
+      <div class="window-note" id="windowNote">请在打开的窗口里登录和翻页。看到新的一页后，点右边的「抽出并填写」。</div>
       <iframe id="frame" class="frame" title="网站" hidden></iframe>
     </div>
   </section>
@@ -123,6 +124,10 @@
   var adapters = [];
   var extracted = null;
   var siteUrl = "";
+  var pageNote = "";
+  var pageWarn = false;
+  var opening = false;
+  var openTicket = 0;
   var armedTimer = 0;
   var savedTimer = 0;
   var API = location.protocol === "file:" ? "http://127.0.0.1:8780" : "";
@@ -157,6 +162,26 @@
     document.body.dataset.site = "open";
     frame.hidden = false;
     if (frame.getAttribute("src") !== href) frame.src = href;
+  }
+
+  function showWindow(href) {
+    siteUrl = href;
+    document.body.dataset.site = "window";
+    frame.hidden = true;
+    frame.removeAttribute("src");
+  }
+
+  function sameOrigin(href) {
+    try {
+      var target = new URL(href);
+      return target.protocol === location.protocol && target.host === location.host;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function closeBrowser() {
+    fetch(API + "/api/browser/close", { method: "POST", body: "{}" }).catch(function () {});
   }
 
   function apply(next) {
@@ -259,14 +284,13 @@
   function paintLive() {
     var hasFiles = files.length > 0;
     var open = !!siteUrl;
-    var adapter = hasFiles && open ? currentAdapter() : null;
     var next = "empty";
     if (hasFiles && !open) next = "files";
-    else if (hasFiles && open && !adapter) next = "noadapter";
-    else if (hasFiles && open && adapter) next = "ready";
+    else if (hasFiles && open) next = "ready";
     state = next;
     document.body.dataset.state = next;
-    document.body.dataset.site = open ? "open" : "closed";
+    if (!open) document.body.dataset.site = "closed";
+    else if (document.body.dataset.site !== "window") document.body.dataset.site = "open";
     if (next !== "noadapter") importer.hidden = true;
     renderFiles();
     statusEl.className = "status";
@@ -280,28 +304,37 @@
       return;
     }
     if (!open) {
-      statusText.textContent = "先在左边打开网站并登录";
+      statusText.textContent = "先打开网站并登录";
       return;
     }
-    if (!adapter) {
-      statusEl.classList.add("warn");
-      statusText.innerHTML = '这个网站还没有适配包<a href="#generate">根据这一页生成</a>';
+    statusEl.classList.add(pageWarn ? "warn" : "ready");
+    document.getElementById("hint").textContent = document.body.dataset.site === "window"
+      ? "在打开的窗口里自己翻页。看到新的一页，再点「抽出并填写」。看完后在那个窗口里亲手点提交。"
+      : "你自己翻页。看到新的一页，再点「抽出并填写」。看完后在左边亲手点提交。";
+    if (opening) {
+      statusText.textContent = "正在打开网站…";
       return;
     }
-    statusEl.classList.add("ready");
-    if (extracted) {
-      statusText.textContent = "已抽出 " + extracted.sourced + " 项，留空 " + (extracted.blanks || []).length + " 项";
-      go.disabled = false;
-      go.classList.add("outline");
-      return;
-    }
-    statusText.textContent = "将填入：" + adapter.id;
     go.disabled = false;
+    if (pageNote) {
+      statusText.textContent = pageNote;
+      return;
+    }
+    if (extracted) {
+      statusText.textContent = "已抽出 " + extracted.sourced + " 项。看到新的一页再点一次";
+      return;
+    }
+    statusText.textContent = "看到这一页后，点「抽出并填写」";
   }
 
   function resetCase() {
     files = [];
     extracted = null;
+    pageNote = "";
+    pageWarn = false;
+    opening = false;
+    openTicket += 1;
+    closeBrowser();
     document.body.classList.remove("has-blanks");
     caseName.textContent = "未命名的一单";
     importer.hidden = true;
@@ -337,6 +370,8 @@
       else rejected.push(list[i]);
     }
     extracted = null;
+    pageNote = "";
+    pageWarn = false;
     document.body.classList.remove("has-blanks");
     paintLive();
     if (!rejected.length) return;
@@ -427,11 +462,258 @@
     document.body.classList.add("live");
     live = true;
     extracted = null;
+    pageNote = "";
+    pageWarn = false;
     document.body.classList.remove("has-blanks");
     url.value = parsed.href;
     setSecure(parsed.protocol === "https:");
-    showFrame(parsed.href);
+    if (sameOrigin(parsed.href)) {
+      closeBrowser();
+      showFrame(parsed.href);
+      paintLive();
+      return;
+    }
+    var ticket = ++openTicket;
+    opening = true;
+    showWindow(parsed.href);
     paintLive();
+    fetch(API + "/api/browser/open", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: parsed.href })
+    }).then(function (res) { return readJson(res, "没有打开"); })
+      .then(function () {
+        if (ticket !== openTicket) {
+          closeBrowser();
+          return;
+        }
+        opening = false;
+        paintLive();
+      })
+      .catch(function (err) {
+        if (ticket !== openTicket) return;
+        opening = false;
+        clearFrame();
+        paintLive();
+        statusEl.className = "status bad";
+        var message = err && err.message ? err.message : "";
+        statusText.textContent = /fetch|network|failed/i.test(message) ? "本机程序没有开，网站还打不开" : (message || "没有打开");
+      });
+  }
+
+  function readJson(res, fallback) {
+    var type = res.headers.get("content-type") || "";
+    if (type.indexOf("application/json") < 0) throw new Error("fetch-fallback");
+    return res.json().then(function (data) {
+      if (!res.ok) throw new Error(data.error || fallback);
+      return data;
+    });
+  }
+
+  function noteFrom(data) {
+    var filled = (data.filled || []).length;
+    var left = (data.skipped || []).length + (data.mismatches || []).length;
+    pageWarn = !filled;
+    if (!filled && (data.skipped || []).length) {
+      pageNote = "这一页对上了，但这些值要留空。翻到下一页后再点一次";
+      return;
+    }
+    if (!filled) {
+      pageNote = data.empty
+        ? "这一页还没有能填的格子。翻到下一页后再点一次"
+        : "这一页没有对上能填的格子。翻到下一页后再点一次";
+      return;
+    }
+    pageNote = "这一页填了 " + filled + " 项";
+    if (left) pageNote += "，还有 " + left + " 项留空";
+    if ((data.mismatches || []).length) pageNote += "。有的格子读回来不一致";
+    pageNote += "。翻到下一页后再点一次";
+    pageWarn = false;
+  }
+
+  function failStatus(err, fallback) {
+    paintLive();
+    statusEl.className = "status bad";
+    var message = err && err.message ? err.message : "";
+    statusText.textContent = /fetch|network|failed/i.test(message) ? fallback : (message || fallback);
+  }
+
+  function fillViaBrowser() {
+    go.disabled = true;
+    go.className = "btn-primary busy";
+    go.textContent = "正在填写这一页…";
+    return fetch(API + "/api/browser/fill", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ run: extracted.run })
+    }).then(function (res) { return readJson(res, "这一页没有填上"); })
+      .then(function (data) {
+        noteFrom(data);
+        paintLive();
+      })
+      .catch(function (err) { failStatus(err, "本机程序没有开，还不能填写"); });
+  }
+
+  function controlType(node) {
+    var tag = (node.tagName || "").toLowerCase();
+    if (tag === "select") return "select";
+    if (tag === "textarea") return "textarea";
+    return (node.type || "text").toLowerCase();
+  }
+
+  function textOnly(el) {
+    var out = "";
+    for (var i = 0; i < el.childNodes.length; i++) {
+      if (el.childNodes[i].nodeType === 3) out += el.childNodes[i].textContent || "";
+    }
+    var text = out.trim() || el.innerText || el.textContent || "";
+    return String(text).replace(/\s+/g, " ").trim();
+  }
+
+  function controlLabel(node) {
+    var direct = (node.getAttribute("aria-label") || "").trim();
+    if (direct) return direct;
+    var prev = node.previousElementSibling;
+    if (prev && prev.classList && prev.classList.contains("inline-label")) return textOnly(prev);
+    var doc = node.ownerDocument;
+    if (node.id) {
+      var labels = doc.querySelectorAll("label");
+      for (var i = 0; i < labels.length; i++) {
+        if (labels[i].getAttribute("for") === node.id && textOnly(labels[i])) return textOnly(labels[i]);
+      }
+    }
+    var wrap = node.closest ? node.closest("label") : null;
+    if (wrap && textOnly(wrap)) return textOnly(wrap);
+    var row = node.closest ? node.closest(".row") : null;
+    if (row) {
+      var lab = row.querySelector(".label");
+      if (lab && textOnly(lab)) return textOnly(lab);
+    }
+    return (node.getAttribute("placeholder") || "").replace(/\s+/g, " ").trim();
+  }
+
+  function isShown(node) {
+    if (!node || node.disabled) return false;
+    if (node.closest && node.closest("[hidden]")) return false;
+    var view = node.ownerDocument.defaultView;
+    var style = view.getComputedStyle(node);
+    if (style.display === "none" || style.visibility === "hidden") return false;
+    var rect = node.getBoundingClientRect();
+    return rect.width >= 1 && rect.height >= 1;
+  }
+
+  function pageFields() {
+    var doc;
+    try { doc = frame.contentDocument; } catch (e) { return null; }
+    if (!doc || !doc.body) return null;
+    var allowed = { text: 1, textarea: 1, search: 1, email: 1, tel: 1, url: 1, number: 1, select: 1 };
+    var nodes = doc.querySelectorAll("input, textarea, select");
+    var controls = [];
+    var elements = [];
+    for (var i = 0; i < nodes.length; i++) {
+      var node = nodes[i];
+      var type = controlType(node);
+      if (!allowed[type] || !isShown(node)) continue;
+      controls.push({ name: node.getAttribute("name") || "", label: controlLabel(node), type: type });
+      elements.push(node);
+    }
+    return { controls: controls, elements: elements };
+  }
+
+  function writeNode(node, item) {
+    var value = String(item.value == null ? "" : item.value);
+    var tag = (node.tagName || "").toLowerCase();
+    if (tag === "select") {
+      var options = node.options || [];
+      var found = "";
+      for (var i = 0; i < options.length; i++) {
+        if (options[i].value === value || options[i].label === value || options[i].text === value) {
+          found = options[i].value;
+          break;
+        }
+      }
+      if (found === "" && value !== "") return null;
+      if (node.value !== found) {
+        node.value = found;
+        node.dispatchEvent(new Event("input", { bubbles: true }));
+        node.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      return node.value === found ? node.value : null;
+    }
+    var view = node.ownerDocument.defaultView;
+    var proto = tag === "textarea" ? view.HTMLTextAreaElement.prototype : view.HTMLInputElement.prototype;
+    var desc = Object.getOwnPropertyDescriptor(proto, "value");
+    if (String(node.value || "") !== value) {
+      if (desc && desc.set) desc.set.call(node, value);
+      else node.value = value;
+      node.dispatchEvent(new Event("input", { bubbles: true }));
+      node.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    var actual = node.value == null ? "" : String(node.value);
+    return actual.trim() === value.trim() ? actual : null;
+  }
+
+  function fillInFrame() {
+    var doc;
+    try { doc = frame.contentDocument; } catch (e) { doc = null; }
+    if (doc && doc.defaultView && doc.defaultView.__submitted) {
+      paintLive();
+      statusEl.className = "status bad";
+      statusText.textContent = "页面显示已经提交，不再填写";
+      return;
+    }
+    var page = pageFields();
+    if (!page) {
+      paintLive();
+      statusEl.className = "status bad";
+      statusText.textContent = "这一页的格子读不到，填不进去";
+      return;
+    }
+    go.disabled = true;
+    go.className = "btn-primary busy";
+    go.textContent = "正在填写这一页…";
+    var elements = page.elements;
+    return fetch(API + "/api/fill-page", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ run: extracted.run, controls: page.controls })
+    }).then(function (res) { return readJson(res, "这一页没有填上"); })
+      .then(function (data) {
+        var mismatches = [];
+        var wrote = [];
+        (data.filled || []).forEach(function (item) {
+          var node = elements[item.index];
+          if (!node || (node.getAttribute("name") || "") !== (item.name || "")) {
+            node = null;
+            if (item.name) {
+              for (var i = 0; i < elements.length; i++) {
+                if ((elements[i].getAttribute("name") || "") === item.name) { node = elements[i]; break; }
+              }
+            }
+          }
+          if (!node || writeNode(node, item) == null) mismatches.push(item.label);
+          else wrote.push(item);
+        });
+        noteFrom({
+          filled: wrote,
+          skipped: data.skipped || [],
+          mismatches: mismatches,
+          empty: !!data.empty
+        });
+        paintLive();
+      })
+      .catch(function (err) { failStatus(err, "本机程序没有开，还不能填写"); });
+  }
+
+  function fillCurrentPage() {
+    if (!extracted || !extracted.run) {
+      paintLive();
+      statusEl.className = "status bad";
+      statusText.textContent = "先抽出再填写";
+      return;
+    }
+    if (document.body.dataset.site === "window") return fillViaBrowser();
+    return fillInFrame();
   }
 
   function extractLive() {
@@ -441,26 +723,14 @@
     var body = new FormData();
     body.append("productId", caseName.textContent.trim() || "未命名的一单");
     files.forEach(function (file) { body.append("files", file, file.name); });
-    fetch(API + "/api/extract", { method: "POST", body: body })
-      .then(function (res) {
-        var type = res.headers.get("content-type") || "";
-        if (type.indexOf("application/json") < 0) throw new Error("fetch-fallback");
-        return res.json().then(function (data) {
-          if (!res.ok) throw new Error(data.error || "没有抽出");
-          return data;
-        });
-      })
+    return fetch(API + "/api/extract", { method: "POST", body: body })
+      .then(function (res) { return readJson(res, "没有抽出"); })
       .then(function (data) {
         extracted = data;
         renderBlanks(data.blanks || []);
-        paintLive();
+        return fillCurrentPage();
       })
-      .catch(function (err) {
-        paintLive();
-        statusEl.className = "status bad";
-        var message = err && err.message ? err.message : "";
-        statusText.textContent = /fetch|network|failed/i.test(message) ? "本机程序没有开，还不能抽出" : (message || "没有抽出");
-      });
+      .catch(function (err) { failStatus(err, "本机程序没有开，还不能抽出"); });
   }
 
   omnibox.addEventListener("submit", function (event) {
@@ -469,9 +739,10 @@
   });
 
   go.addEventListener("click", function () {
-    if (state !== "ready" || go.disabled) return;
+    if (state !== "ready" || go.disabled || opening) return;
     if (live) {
-      extractLive();
+      if (extracted) fillCurrentPage();
+      else extractLive();
       return;
     }
     go.disabled = true;
@@ -499,6 +770,8 @@
       if (live) {
         files = [];
         extracted = null;
+        pageNote = "";
+        pageWarn = false;
         document.body.classList.remove("has-blanks");
         paintLive();
       } else {
@@ -620,6 +893,8 @@
     if (!button) return;
     files.splice(Number(button.dataset.index), 1);
     extracted = null;
+    pageNote = "";
+    pageWarn = false;
     document.body.classList.remove("has-blanks");
     paintLive();
   });

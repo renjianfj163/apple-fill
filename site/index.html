@@ -1,452 +1,420 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Apple Fill · 在你的电脑上填表</title>
-  <meta name="description" content="资料留在你的电脑上。你的模型负责认字和找格子。程序停在提交之前，登录、验证码和提交由你完成。"/>
-  <style>
-    :root {
-      --paper: #f3efe6;
-      --card: #fffdf8;
-      --ink: #1e1a16;
-      --muted: #5f584e;
-      --line: #e3dacb;
-      --green: #0e6b52;
-      --green-soft: #e7f5ef;
-      --red: #9a3412;
-      --red-soft: #fde8dc;
-      --amber: #8a5a12;
-      --amber-soft: #f8efd8;
-      --shadow: 0 16px 40px rgba(55, 42, 24, 0.08);
-    }
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body {
-      margin: 0;
-      background: var(--paper);
-      color: var(--ink);
-      font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
-      font-size: 16px;
-      line-height: 1.65;
-    }
-    a { color: var(--green); }
-    .wrap { width: min(1080px, calc(100% - 32px)); margin: 0 auto; }
-    header.top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 22px 0 8px;
-    }
-    .brand { font-weight: 650; letter-spacing: 0.01em; }
-    nav { display: flex; gap: 18px; font-size: 14px; }
-    nav a { color: var(--muted); text-decoration: none; }
-    nav a:hover { color: var(--ink); }
-    h1 { font-size: clamp(32px, 5vw, 48px); line-height: 1.2; margin: 12px 0 12px; letter-spacing: -0.03em; }
-    h2 { font-size: 28px; margin: 0 0 8px; letter-spacing: -0.02em; }
-    h3 { margin: 0 0 6px; font-size: 18px; }
-    .lede { font-size: 18px; max-width: 40rem; color: var(--muted); margin: 0; }
-    .hero { padding: 12px 0 28px; }
-    .player {
-      margin-top: 28px;
-      background: var(--card);
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow);
-      padding: 22px 22px 16px;
-    }
-    .stage {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      grid-template-areas:
-        "pc model"
-        "form form";
-      gap: 12px;
-    }
-    .node {
-      align-self: start;
-      background: #faf7f1;
-      border: 1px solid var(--line);
-      padding: 14px 16px;
-      transition: border-color 0.35s ease, background 0.35s ease, transform 0.35s ease;
-    }
-    .player[data-beat="1"] .node-pc,
-    .player[data-beat="2"] .node-model,
-    .player[data-beat="3"] .node-model,
-    .player[data-beat="4"] .node-form,
-    .player[data-beat="5"] .node-form {
-      border-color: var(--green);
-      background: var(--green-soft);
-      transform: translateY(-2px);
-    }
-    .node-pc { grid-area: pc; }
-    .node-model { grid-area: model; }
-    .node-form { grid-area: form; }
-    .check-label { margin: 14px 0 0; }
-    .kicker { font-size: 12px; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 8px; }
-    .file {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      background: #fff;
-      border: 1px solid var(--line);
-      padding: 10px;
-    }
-    .file-mark {
-      width: 36px;
-      height: 44px;
-      background: #fff;
-      border: 1px solid var(--line);
-      position: relative;
-    }
-    .file-mark::after {
-      content: "";
-      position: absolute;
-      right: 0;
-      top: 0;
-      border-top: 10px solid var(--paper);
-      border-left: 10px solid #c8bfb0;
-    }
-    .file strong, .field strong { display: block; }
-    .file span, .muted, .field span { color: var(--muted); font-size: 13px; }
-    .slip { display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px; margin-top: 8px; background: #fff; border: 1px solid var(--line); font-size: 14px; }
-    .slip.keep { border-color: var(--green); }
-    .slip.drop { background: var(--red-soft); border-color: transparent; }
-    .slip.drop s { color: var(--muted); }
-    .slip em { font-style: normal; font-size: 12px; color: var(--ink); }
-    .player[data-beat="3"] .slip.drop { animation: reject 0.6s ease; }
-    @keyframes reject { from { transform: translateX(8px); opacity: 0.4; } to { transform: none; opacity: 1; } }
-    .form-row { display: grid; grid-template-columns: 88px 1fr; gap: 8px; align-items: center; margin-top: 8px; }
-    .box {
-      min-height: 36px;
-      background: #fff;
-      border: 1px solid var(--line);
-      padding: 6px 10px;
-      font-size: 14px;
-    }
-    .box.filled { border-color: var(--green); }
-    .box.empty { border-style: dashed; color: var(--amber); }
-    .ref { grid-column: 2; font-size: 12px; color: var(--green); margin-top: -4px; }
-    .submit {
-      margin-top: 12px;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      border: 1px solid var(--line);
-      background: #fff;
-      padding: 8px 14px;
-      color: var(--muted);
-    }
-    .player[data-beat="5"] .submit,
-    .player[data-beat="5"] .box.empty {
-      border-color: var(--amber);
-      background: var(--amber-soft);
-      color: var(--ink);
-    }
-    .caption { display: flex; justify-content: space-between; gap: 18px; align-items: end; margin-top: 16px; min-height: 72px; }
-    .caption p { margin: 0; }
-    .caption strong { display: block; font-size: 18px; }
-    .controls { display: flex; gap: 8px; align-items: center; }
-    button {
-      font: inherit;
-      background: #fff;
-      border: 1px solid var(--line);
-      padding: 6px 12px;
-      cursor: pointer;
-      color: var(--ink);
-    }
-    button:hover { border-color: var(--ink); }
-    .dots { display: flex; gap: 6px; }
-    .dots button { width: 10px; height: 10px; padding: 0; border-radius: 50%; }
-    .player[data-beat="1"] .dots button:nth-child(1),
-    .player[data-beat="2"] .dots button:nth-child(2),
-    .player[data-beat="3"] .dots button:nth-child(3),
-    .player[data-beat="4"] .dots button:nth-child(4),
-    .player[data-beat="5"] .dots button:nth-child(5) { background: var(--green); border-color: var(--green); }
-    section.block { padding: 28px 0 10px; }
-    .intro { color: var(--muted); margin-top: 0; }
-    ol.steps { list-style: none; padding: 0; margin: 18px 0 0; display: grid; gap: 10px; }
-    ol.steps li, .card, .risk {
-      background: var(--card);
-      border: 1px solid var(--line);
-      padding: 14px 16px;
-    }
-    ol.steps li { display: grid; grid-template-columns: 36px 1fr; gap: 12px; align-items: start; }
-    .num {
-      width: 36px;
-      height: 36px;
-      display: grid;
-      place-items: center;
-      background: var(--green);
-      color: #fff;
-      font-weight: 650;
-    }
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
-    .risk h3 { color: var(--red); }
-    .card h3 { color: var(--green); }
-    .fine { background: var(--card); border: 1px solid var(--line); padding: 18px 18px 8px; margin-top: 16px; }
-    .fine li { margin: 8px 0; }
-    .dl {
-      display: inline-block;
-      margin-top: 10px;
-      background: var(--green);
-      color: #fff;
-      text-decoration: none;
-      padding: 8px 14px;
-    }
-    .dl[aria-disabled="true"] { background: #cfc6b8; pointer-events: none; }
-    pre.paste {
-      white-space: pre-wrap;
-      background: #faf7f1;
-      border: 1px solid var(--line);
-      padding: 12px 14px;
-      font-family: Consolas, "Microsoft YaHei", monospace;
-      font-size: 14px;
-    }
-    footer { color: var(--muted); font-size: 13px; padding: 28px 0 48px; }
-    @media (max-width: 800px) {
-      nav { display: none; }
-      .stage { grid-template-columns: 1fr; grid-template-areas: "pc" "model" "form"; }
-      .caption, .grid-2 { display: block; }
-      .grid-2 > * { margin-top: 12px; }
-      .controls { margin-top: 12px; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      html { scroll-behavior: auto; }
-      .node, .bridge i, .slip { animation: none !important; transition: none !important; transform: none !important; }
-    }
-    @media print {
-      .controls, header.top nav { display: none; }
-      .player { box-shadow: none; }
-      body { background: #fff; }
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apple Fill</title>
+<meta name="description" content="在你的电脑上填表，停在提交之前。资料不经过我们。">
+<style>
+  /* ===== 与桌面 App 同一套规则（theme.css），此处内联以便单文件发布 ===== */
+  :root {
+    --paper:#F6F3EC; --paper-deep:#ECE8DD; --green:#1F4D3A; --ink:#2B2B2B;
+    --mute:#6B685F; --mute-soft:#8A877F; --amber:#B7791F; --brick:#A33A2B;
+    --fs-s:12px; --fs-m:14px; --fs-l:16px; --fs-xl:20px; --fs-xxl:32px; /* xxl 仅用于首屏标题和步骤大数字 */
+    --sp-1:8px; --sp-2:16px; --sp-3:24px; --sp-4:32px; --sp-6:64px; --sp-8:96px;
+    --radius:6px; --line:1px solid var(--paper-deep);
+    --font-ui:"Microsoft YaHei UI","PingFang SC",sans-serif;
+    --font-mono:"Cascadia Mono","Consolas",monospace;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html { scroll-padding-top:72px; }
+  @media (prefers-reduced-motion:no-preference) { html { scroll-behavior:smooth; } }
+  body { font-family:var(--font-ui); font-size:var(--fs-l); color:var(--ink); background:var(--paper); line-height:1.8; }
+  a { color:var(--green); }
+  strong, .w6 { font-weight:600; }
+  .mono { font-family:var(--font-mono); font-size:var(--fs-s); }
+  .mute { color:var(--mute); }
+  .wrap { max-width:960px; margin:0 auto; padding:0 var(--sp-3); }
+  .prose { max-width:680px; }
+  section { padding:var(--sp-8) 0 0; }
+  h2 { font-size:var(--fs-xl); font-weight:600; line-height:1.4; margin-bottom:var(--sp-3); }
+
+  /* ===== 顶部导航 ===== */
+  .nav { position:sticky; top:0; z-index:10; background:var(--paper); border-bottom:var(--line); }
+  .nav .wrap { display:flex; align-items:center; justify-content:space-between; height:56px; }
+  .brand { font-weight:600; font-size:var(--fs-l); color:var(--ink); text-decoration:none; }
+  .nav-links { display:flex; align-items:center; gap:var(--sp-3); font-size:var(--fs-m); }
+  .nav-links a.link { color:var(--mute); text-decoration:none; }
+  .nav-links a.link:hover { color:var(--ink); }
+  .nav-dl { display:inline-flex; align-items:center; height:32px; padding:0 var(--sp-2); border:1px solid var(--green);
+    border-radius:var(--radius); color:var(--green); text-decoration:none; font-size:var(--fs-m); font-weight:600; }
+  .nav-dl:hover { background:var(--green); color:var(--paper); }
+  @media (max-width:640px) { .nav-links a.link { display:none; } }
+
+  /* ===== 首屏 ===== */
+  .hero { padding-top:var(--sp-8); }
+  .hero h1 { font-size:var(--fs-xxl); font-weight:600; line-height:1.35; margin-bottom:var(--sp-3); }
+  .hero .lead { max-width:680px; color:var(--ink); margin-bottom:var(--sp-4); }
+  .btn { display:inline-flex; align-items:center; justify-content:center; height:48px; padding:0 var(--sp-4);
+    border:1px solid var(--green); border-radius:var(--radius); background:var(--green); color:var(--paper);
+    font-family:var(--font-ui); font-size:var(--fs-l); font-weight:600; text-decoration:none; cursor:pointer; }
+  .btn:hover { opacity:.92; }
+  .btn.outline { background:transparent; color:var(--green); }
+  .cta-meta { margin-top:var(--sp-1); font-size:var(--fs-s); color:var(--mute); }
+  .cta-alt { margin-top:var(--sp-1); font-size:var(--fs-s); }
+  .trust { margin-top:var(--sp-3); font-size:var(--fs-m); color:var(--mute); display:flex; align-items:baseline; gap:var(--sp-1); }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--green); flex:none; transform:translateY(-1px); }
+  .dot.amber { background:var(--amber); }
+  .mobile-note { display:none; }
+  body.is-mobile #cta, body.is-mobile .cta-meta, body.is-mobile .cta-alt { display:none; }
+  body.is-mobile .mobile-note { display:block; }
+  body.is-mobile .nav-dl { display:none; }
+  .mobile-note p { margin-bottom:var(--sp-2); }
+
+  /* ===== 窗口示意图 ===== */
+  .shot-wrap { padding-top:var(--sp-6); }
+  .shot { display:grid; grid-template-columns:62fr 38fr; border:var(--line); border-radius:var(--radius); overflow:hidden; background:var(--paper); }
+  .shot .left { background:#fff; padding:var(--sp-3); }
+  .shot .right { padding:var(--sp-3); border-left:var(--line); display:flex; flex-direction:column; gap:var(--sp-2); font-size:var(--fs-m); }
+  .addr { display:flex; gap:var(--sp-1); align-items:center; height:32px; border:var(--line); border-radius:var(--radius); padding:0 var(--sp-1); font-size:var(--fs-s); color:var(--mute); margin-bottom:var(--sp-3); }
+  .addr .go { margin-left:auto; border:1px solid var(--green); color:var(--green); border-radius:var(--radius); padding:0 var(--sp-1); font-weight:600; }
+  .frow { display:grid; grid-template-columns:96px 1fr; gap:var(--sp-1); align-items:center; padding:var(--sp-1) 0; font-size:var(--fs-m); }
+  .frow .lab { color:var(--mute); }
+  .frow .box { border:1px solid var(--paper-deep); border-radius:var(--radius); padding:4px var(--sp-1); min-height:32px; display:flex; align-items:center; }
+  .frow .box.empty { border-style:dashed; color:var(--mute); font-size:var(--fs-s); }
+  .shot .files { font-family:var(--font-mono); font-size:var(--fs-s); border:var(--line); border-radius:var(--radius); padding:var(--sp-1) var(--sp-2); }
+  .shot .status { color:var(--green); font-weight:600; display:flex; gap:var(--sp-1); align-items:baseline; }
+  .shot .blank { display:grid; grid-template-columns:8px 1fr; column-gap:var(--sp-1); align-items:baseline; font-size:var(--fs-m); }
+  .shot .blank .r { grid-column:2; font-size:var(--fs-s); color:var(--mute); }
+  .shot .fakebtn { margin-top:auto; border:1px solid var(--green); color:var(--green); border-radius:var(--radius); text-align:center; height:40px; line-height:38px; font-weight:600; }
+  .shot-cap { margin-top:var(--sp-1); font-size:var(--fs-s); color:var(--mute); }
+  @media (max-width:760px) { .shot { grid-template-columns:1fr; } .shot .right { border-left:none; border-top:var(--line); } }
+
+  /* ===== 数据去向四格 ===== */
+  .flow { display:grid; grid-template-columns:repeat(4,1fr); gap:var(--sp-3); }
+  .cell { border:var(--line); border-radius:var(--radius); padding:var(--sp-2); position:relative; font-size:var(--fs-m); line-height:1.6; }
+  .cell:not(:last-child)::after { content:"→"; position:absolute; right:-20px; top:var(--sp-2); color:var(--mute-soft); }
+  .cell .t { font-weight:600; margin-bottom:var(--sp-1); }
+  .cell .sub { font-size:var(--fs-s); color:var(--mute); margin-top:var(--sp-1); }
+  .cell .row { display:flex; align-items:baseline; gap:var(--sp-1); margin-bottom:4px; }
+  .cell .keep { color:var(--green); font-weight:600; }
+  .cell .drop { color:var(--brick); font-weight:600; text-decoration:line-through; }
+  .cell .drop-tag { color:var(--brick); font-size:var(--fs-s); }
+  .cell .keep-tag { color:var(--green); font-size:var(--fs-s); }
+  .cell .quote { font-size:var(--fs-s); color:var(--mute); }
+  .flow-cap { margin-top:var(--sp-3); }
+  .flow-cap .w6 { display:block; }
+  @media (max-width:860px) {
+    .flow { grid-template-columns:1fr; }
+    .cell:not(:last-child)::after { content:"↓"; right:auto; left:var(--sp-2); top:auto; bottom:-22px; }
+  }
+
+  /* ===== 下载区 ===== */
+  .dl-grid { display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-3); }
+  .dl-card { border:var(--line); border-radius:var(--radius); padding:var(--sp-3); }
+  .dl-card h3 { font-size:var(--fs-l); font-weight:600; margin-bottom:var(--sp-1); }
+  .dl-card p { font-size:var(--fs-m); line-height:1.7; margin-bottom:var(--sp-2); }
+  .dl-card .tip { font-size:var(--fs-s); color:var(--mute); line-height:1.7; border-left:2px solid var(--amber); padding-left:var(--sp-1); margin-top:var(--sp-2); }
+  .sha { margin-top:var(--sp-1); font-size:var(--fs-s); color:var(--mute); word-break:break-all; }
+  .updated { margin-top:var(--sp-2); font-size:var(--fs-s); color:var(--mute); }
+  @media (max-width:760px) { .dl-grid { grid-template-columns:1fr; } }
+  body.is-mobile .dl-card .btn { display:none; }
+
+  /* ===== 五步 ===== */
+  .steps { list-style:none; display:flex; flex-direction:column; gap:var(--sp-4); }
+  .step { display:grid; grid-template-columns:56px 1fr; gap:var(--sp-2); }
+  .step .n { font-size:var(--fs-xxl); font-weight:600; color:var(--green); line-height:1.2; }
+  .step .h { font-weight:600; font-size:var(--fs-l); margin-bottom:4px; }
+  .step .d { font-size:var(--fs-m); color:var(--ink); line-height:1.8; }
+
+  /* ===== 由你完成 ===== */
+  .todo { display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-4) var(--sp-4); }
+  .todo .h { font-weight:600; margin-bottom:4px; }
+  .todo .d { font-size:var(--fs-m); color:var(--ink); line-height:1.8; }
+  @media (max-width:760px) { .todo { grid-template-columns:1fr; } }
+
+  /* ===== 风险 / 责任（折叠） ===== */
+  details { border-top:var(--line); }
+  details:last-of-type { border-bottom:var(--line); }
+  summary { list-style:none; cursor:pointer; padding:var(--sp-2) 0; display:grid; grid-template-columns:8px 1fr 16px; column-gap:var(--sp-1); align-items:baseline; }
+  summary::-webkit-details-marker { display:none; }
+  summary::after { content:"+"; color:var(--mute); text-align:right; grid-column:3; grid-row:1; }
+  details[open] summary::after { content:"−"; }
+  summary .ttl { font-weight:600; grid-column:2; }
+  summary .one { grid-column:2; font-size:var(--fs-m); color:var(--mute); line-height:1.7; }
+  details .more { padding:0 0 var(--sp-2) calc(8px + var(--sp-1)); font-size:var(--fs-m); line-height:1.8; max-width:680px; }
+  .plain-sum { grid-template-columns:1fr 16px; }
+  .plain-sum .ttl { grid-column:1; font-size:var(--fs-l); }
+  .plain-sum::after { grid-column:2; }
+  .bounds { list-style:none; padding:0 0 var(--sp-2); max-width:680px; display:flex; flex-direction:column; gap:var(--sp-1); font-size:var(--fs-m); line-height:1.8; }
+  .bounds li { padding-left:var(--sp-2); position:relative; }
+  .bounds li::before { content:""; position:absolute; left:0; top:11px; width:6px; height:6px; border-radius:50%; background:var(--mute-soft); }
+
+  /* ===== 页脚 ===== */
+  footer { margin-top:var(--sp-8); padding:var(--sp-4) 0 var(--sp-8); border-top:var(--line); font-size:var(--fs-s); color:var(--mute); line-height:1.8; }
+  footer p { max-width:680px; }
+</style>
 </head>
 <body>
+
+<!-- ===== 导航 ===== -->
+<header class="nav">
   <div class="wrap">
-    <header class="top">
-      <div class="brand">Apple Fill</div>
-      <nav>
-        <a href="#download">下载</a>
-        <a href="#flow">流程</a>
-        <a href="#yours">由你完成</a>
-        <a href="#risk">风险</a>
-        <a href="#terms">责任边界</a>
-      </nav>
-    </header>
-
-    <section class="hero">
-      <h1>在你的电脑上填表，停在提交之前。</h1>
-      <p class="lede">资料不经过我们。你的模型负责认字和找格子。写进网页的每个值，都要能指出原文那一句。登录、验证码和提交，由你完成。</p>
-
-      <div class="player" id="player" data-beat="1">
-        <div class="stage" aria-hidden="true">
-          <article class="node node-pc">
-            <p class="kicker">这台电脑</p>
-            <div class="file">
-              <div class="file-mark"></div>
-              <div>
-                <strong>说明书.pdf</strong>
-                <span>第 2 页留在本机</span>
-              </div>
-            </div>
-          </article>
-          <article class="node node-model">
-            <p class="kicker">你的模型</p>
-            <strong>只接收这一页</strong>
-            <div class="muted">文字，或扫描页的图片</div>
-            <p class="kicker check-label">出处核对</p>
-            <div class="slip keep"><span>220V</span><em>第 2 页有原句，保留</em></div>
-            <div class="slip drop"><s>110V</s><em>没有出处，丢掉</em></div>
-          </article>
-          <article class="node node-form">
-            <p class="kicker">申报网页</p>
-            <div class="form-row">
-              <span>额定电压</span>
-              <div class="box filled">220V</div>
-              <div class="ref">说明书.pdf · 第 2 页 · 「额定电压：220V」</div>
-            </div>
-            <div class="form-row">
-              <span>验证码</span>
-              <div class="box empty">由你填写</div>
-            </div>
-            <div class="submit">提交申报 · 程序不点击</div>
-          </article>
-        </div>
-        <div class="caption">
-          <p>
-            <strong id="beat-title">资料留在这台电脑</strong>
-            <span id="beat-text">说明书不会上传到我们的服务器。</span>
-          </p>
-          <div class="controls">
-            <button type="button" id="prev">上一段</button>
-            <div class="dots" id="dots"></div>
-            <button type="button" id="next">下一段</button>
-            <button type="button" id="toggle">暂停</button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="block" id="download">
-      <h2>下载到你的电脑</h2>
-      <p class="intro">Windows 64 位和 Apple 芯片的 Mac 各有一个安装包。包里已经带好 Python 和浏览器，解压后双击「启动AppleFill」。每次 <code>dev</code> 更新，下面这两个文件会被新包替换，链接不用改。</p>
-      <p class="intro" id="release-status">正在查看最新开发包……</p>
-      <div class="grid-2">
-        <article class="card">
-          <h3>Windows</h3>
-          <p>64 位 Windows 10 或更新版本。解压后双击 <code>启动AppleFill.bat</code>。</p>
-          <a class="dl" id="dl-win" href="https://github.com/renjianfj163/apple-fill/releases/download/dev-build/AppleFill-Windows-x64.zip">下载 Windows 包</a>
-        </article>
-        <article class="card">
-          <h3>Mac</h3>
-          <p>Apple 芯片的 Mac。解压后双击 <code>启动AppleFill.command</code>。Intel 芯片的 Mac 还没有单独的包。</p>
-          <a class="dl" id="dl-mac" href="https://github.com/renjianfj163/apple-fill/releases/download/dev-build/AppleFill-Mac-AppleSilicon.zip">下载 Mac 包</a>
-        </article>
-      </div>
-    </section>
-
-    <section class="block" id="grok">
-      <h2>Grok Bot 只负责把人带到这里</h2>
-      <p class="intro">Bot 不接收资料、密钥或申报内容。它的分享链接要在你自己的 Grok Bot 里生成，形式是 <code>https://x.ai/bot/…</code>。把下面这段贴进 Bot 的描述，然后在分享菜单里创建模板并复制公开链接。</p>
-      <pre class="paste">你是 Apple Fill 的发放说明。只告诉对方打开这个下载页，在自己的电脑上使用自己的模型。
-下载页：https://renjianfj163.github.io/apple-fill/
-不要索取、不要阅读、不要保存产品资料、密钥、账号或申报内容。
-Windows 解压后双击「启动AppleFill.bat」。Apple 芯片的 Mac 解压后双击「启动AppleFill.command」。</pre>
-    </section>
-
-    <section class="block" id="flow">
-      <h2>使用时发生什么</h2>
-      <p class="intro">下面每一步都在你的电脑上完成。我们看不到资料、密钥和申报内容。</p>
-      <ol class="steps">
-        <li><span class="num">1</span><div><h3>先填你自己的模型</h3><p>填写模型地址和模型名。需要密钥就保存在本机。没有配好模型，不能抽取正式资料。扫描件和照片要使用能看图的模型。</p></div></li>
-        <li><span class="num">2</span><div><h3>只把这一页发给该模型</h3><p>PDF、Word 先在本机读出文字。扫描版 PDF 和 JPEG 先在本机变成图片，再发给你的视觉模型转写。转写结果当作这一页的原文。</p></div></li>
-        <li><span class="num">3</span><div><h3>对不上原文的值不保留</h3><p>抄下来的值必须带出处：哪一份文件、第几页、原文那一句。这句话必须在该页里，值必须能从这句话得到。对不上就留空。两处资料不一致就标成冲突，值留空，每个候选各自带着出处。</p></div></li>
-        <li><span class="num">4</span><div><h3>你先登录，程序再填当前页</h3><p>你在本机浏览器里自己登录。然后程序阅读这一页的输入框和按钮，请你的模型起草填写步骤，并试填、读回。读回一致的才留下。</p></div></li>
-        <li><span class="num">5</span><div><h3>你补空格，你来提交</h3><p>登录、验证码、短信，以及每次刷新编号都会变的格子，程序留空。核对页会列出已写入的值和出处。你补完并核对后，自己点击提交。</p></div></li>
-      </ol>
-    </section>
-
-    <section class="block" id="yours">
-      <h2>需要你自己完成的事</h2>
-      <div class="grid-2">
-        <article class="card"><h3>模型与密钥</h3><p>向你单位允许的服务申请接口。地址、模型名和密钥只放在这台电脑上，不要贴进聊天软件。</p></article>
-        <article class="card"><h3>登录和验证</h3><p>账号、密码、验证码、短信验证由你在申报网站上完成。程序不收集这些内容。</p></article>
-        <article class="card"><h3>留空的格子</h3><p>没有出处、互相冲突、读不回、或控件编号不稳定的项目，都留在页面上给你手填。</p></article>
-        <article class="card"><h3>核对和提交</h3><p>对照出处和原页图片。推断出的英文名称、产品类别、产品简介要你确认。提交按钮由你点击。</p></article>
-      </div>
-    </section>
-
-    <section class="block" id="risk">
-      <h2>风险</h2>
-      <p class="intro">这些情况程序不会替你消除。提交前请逐项看过。</p>
-      <div class="grid-2">
-        <article class="risk"><h3>资料会到达你填写的模型</h3><p>页面文字、扫描页图片会发给那个地址，该地址的运营方能看到内容。我们的服务器不接收这些内容。地址若是公有云，资料就离开了你的网络。保密单位请使用本单位允许的内网或已签约接口。</p></article>
-        <article class="risk"><h3>看图模型可能认错字</h3><p>扫描件和照片的出处核对，对着的是转写出来的文字。模型把「220V」看成别的字时，核对仍可能通过。核对页会同时给出页码、原句和那一页的图，请你对照。</p></article>
-        <article class="risk"><h3>纯文字模型读不了扫描件</h3><p>不能看图的模型收不到字。这类文件会没有可用原文，对应字段留空。</p></article>
-        <article class="risk"><h3>推断不是原文</h3><p>英文名称、产品类别、产品简介可以标成推断。它们没有伪装成引用。未经你确认，不能当作已核对的事实。</p></article>
-        <article class="risk"><h3>网页结构可能对不上</h3><p>程序按当前页面起草步骤，只保留读回一致的格子。门户改版、验证码、动态编号会导致部分项目留空。这些不另行安排上门，由你在页面上补完。</p></article>
-        <article class="risk"><h3>网站可能限制自动填写</h3><p>请确认你有权使用该账号，并且这种填写方式符合该网站的规则。程序只打开适配范围里的地址，并停在提交之前。</p></article>
-      </div>
-    </section>
-
-    <section class="block" id="terms">
-      <h2>责任边界</h2>
-      <div class="fine">
-        <ul>
-          <li>本程序是安装在你电脑上的填写辅助，不代理申报，不构成法律、合规或审计意见，也不承诺审核通过。</li>
-          <li>本程序的提供者不接收你的资料、密钥、页面内容和申报结果，也不代你保管账号。</li>
-          <li>程序不编造缺少出处的值，不点击提交，也不代替你勾选「内容真实有效」一类声明。</li>
-          <li>不保证每一个网站都能自动填完，不保证模型转写、引用或自动步骤始终正确。</li>
-          <li>你核对并自行提交后，申报内容、账号使用以及由此产生的后果，由你承担。</li>
-          <li>因资料本身有误、模型误读、你修改了内容，或你自行提交，而产生的损失，本程序的提供者不承担责任。</li>
-          <li>本页说明产品边界，不是正式法律文本。对外提供给单位之前，应由你的法务审阅。</li>
-        </ul>
-      </div>
-    </section>
-
-    <footer>Apple Fill 在本机运行。开发包来自 dev 分支，推送之后下载链接里的文件会换成新包。练习申报页是另一份页面，只用来确认填写会停在提交之前。</footer>
+    <a class="brand" href="#top">Apple Fill</a>
+    <nav class="nav-links">
+      <a class="link" href="#flow">流程</a>
+      <a class="link" href="#todo">由你完成</a>
+      <a class="link" href="#risks">风险</a>
+      <a class="link" href="#bounds">责任边界</a>
+      <a class="nav-dl" href="#downloads">下载</a>
+    </nav>
   </div>
-  <script>
-    const beats = [
-      ["资料留在这台电脑", "说明书不会上传到我们的服务器。"],
-      ["只把这一页发给你的模型", "发送的是这一页的文字，或扫描页的图片。接收方是你填写的地址。"],
-      ["没有出处的值会被丢掉", "220V 能在第 2 页的原句里找到，所以保留。110V 没有出处，不写进表。"],
-      ["对得上的格子才写入", "写入时带上文件、页码和原句。读不回的项目留空。"],
-      ["验证码和提交由你完成", "程序停在提交按钮之前。你核对出处和原页之后，自己点击提交。"]
-    ];
-    const player = document.getElementById("player");
-    const title = document.getElementById("beat-title");
-    const text = document.getElementById("beat-text");
-    const dots = document.getElementById("dots");
-    const toggle = document.getElementById("toggle");
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let beat = 1;
-    let timer = 0;
-    let playing = !reduce;
+</header>
 
-    function render() {
-      player.dataset.beat = String(beat);
-      title.textContent = beats[beat - 1][0];
-      text.textContent = beats[beat - 1][1];
-    }
-    function go(next) {
-      beat = next < 1 ? beats.length : next > beats.length ? 1 : next;
-      render();
-    }
-    function start() {
-      stop();
-      if (!playing) return;
-      timer = window.setInterval(() => go(beat + 1), 3200);
-    }
-    function stop() {
-      if (timer) window.clearInterval(timer);
-      timer = 0;
-    }
-    beats.forEach((_, index) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.setAttribute("aria-label", "第 " + (index + 1) + " 段");
-      button.addEventListener("click", () => { go(index + 1); start(); });
-      dots.appendChild(button);
-    });
-    document.getElementById("prev").addEventListener("click", () => { go(beat - 1); start(); });
-    document.getElementById("next").addEventListener("click", () => { go(beat + 1); start(); });
-    toggle.addEventListener("click", () => {
-      playing = !playing;
-      toggle.textContent = playing ? "暂停" : "播放";
-      start();
-    });
-    if (reduce) toggle.textContent = "播放";
-    render();
-    start();
+<main class="wrap" id="top">
 
-    const releaseStatus = document.getElementById("release-status");
-    const downloads = {
-      "AppleFill-Windows-x64.zip": document.getElementById("dl-win"),
-      "AppleFill-Mac-AppleSilicon.zip": document.getElementById("dl-mac")
+  <!-- ===== 首屏：只回答「是什么、怎么拿、安不安全」 ===== -->
+  <div class="hero">
+    <h1>在你的电脑上填表，<br>停在提交之前。</h1>
+    <p class="lead">资料不经过我们。你的模型负责认字和找格子。写进网页的每个值，都要能指出原文那一句。登录、验证码和提交，由你完成。</p>
+
+    <a class="btn" id="cta" href="#downloads">下载</a>
+    <p class="cta-meta" id="cta-meta"></p>
+    <p class="cta-alt" id="cta-alt"></p>
+
+    <div class="mobile-note">
+      <p>请在电脑上打开此页下载。</p>
+      <button class="btn outline" id="copy-link" type="button">复制本页链接</button>
+    </div>
+
+    <p class="trust"><span class="dot"></span>资料不经过我们的服务器，在你的电脑和你自己的模型之间完成。</p>
+  </div>
+
+  <!-- ===== 窗口示意图（静态，非真实截图；上线后建议换成真截图） ===== -->
+  <div class="shot-wrap">
+    <div class="shot" role="img" aria-label="程序窗口示意：左边是已打开的申报网站，右边是这一单的文件和填写状态">
+      <div class="left">
+        <div class="addr"><span>https://</span><span>某站申报</span><span class="go">打开</span></div>
+        <div class="frow"><span class="lab">额定电压</span><span class="box">220V</span></div>
+        <div class="frow"><span class="lab">型号</span><span class="box empty">留空，你来填</span></div>
+        <div class="frow"><span class="lab">验证码</span><span class="box empty">由你填写</span></div>
+      </div>
+      <div class="right">
+        <div class="files">说明书.pdf</div>
+        <div class="status"><span class="dot"></span>已填 1 项，留空 2 项</div>
+        <div class="blank"><span class="dot amber"></span><span class="w6">型号</span><span class="r">资料里没有</span></div>
+        <div class="blank"><span class="dot amber"></span><span class="w6">验证码</span><span class="r">由你填写</span></div>
+        <div class="fakebtn">完成</div>
+      </div>
+    </div>
+    <p class="shot-cap">示意图。你在打开的窗口里登录和翻页，右边是这一单的文件。</p>
+  </div>
+
+  <!-- ===== 数据去向 ===== -->
+  <section id="flow">
+    <h2>资料去了哪里</h2>
+    <div class="flow">
+      <div class="cell">
+        <div class="t">这台电脑</div>
+        <div class="row"><span class="mono">说明书.pdf</span></div>
+        <div class="sub">第 2 页留在本机</div>
+      </div>
+      <div class="cell">
+        <div class="t">你的模型</div>
+        <div>只接收这一页</div>
+        <div class="sub">文字，或扫描页的图片</div>
+      </div>
+      <div class="cell">
+        <div class="t">出处核对</div>
+        <div class="row"><span class="keep">220V</span><span class="keep-tag">保留</span></div>
+        <div class="quote">第 2 页有原句</div>
+        <div class="row" style="margin-top:var(--sp-1)"><span class="drop">110V</span><span class="drop-tag">丢掉</span></div>
+        <div class="quote">没有出处</div>
+      </div>
+      <div class="cell">
+        <div class="t">申报网页</div>
+        <div class="row"><span class="w6">额定电压</span><span>220V</span></div>
+        <div class="quote">说明书.pdf · 第 2 页 · 「额定电压：220V」</div>
+        <div class="row" style="margin-top:var(--sp-1)"><span class="w6">验证码</span><span class="mute">由你填写</span></div>
+        <div class="quote">提交申报 · 程序不点击</div>
+      </div>
+    </div>
+    <p class="flow-cap">
+      <span class="w6">没有出处的值会被丢掉</span>
+      <span class="mute">220V 能在第 2 页的原句里找到，所以保留。110V 没有出处，不写进表。</span>
+    </p>
+  </section>
+
+  <!-- ===== 下载 ===== -->
+  <section id="downloads">
+    <h2>下载到你的电脑</h2>
+    <p class="prose mute" style="font-size:var(--fs-m);margin-bottom:var(--sp-3)">Windows 64 位和 Apple 芯片的 Mac 各有一个安装包。包里已经带好 Python 和浏览器，解压后双击「启动AppleFill」。</p>
+    <div class="dl-grid">
+      <div class="dl-card" id="card-win">
+        <h3>Windows</h3>
+        <p>64 位 Windows 10 或更新版本。解压后双击 <span class="mono">启动AppleFill.bat</span>。</p>
+        <a class="btn" data-dl="win" href="#downloads">下载 Windows 包（1043 MB）</a>
+        <p class="sha" data-sha="win" hidden></p>
+        <div class="tip">如果系统弹出「Windows 已保护你的电脑」：点「更多信息」，再点「仍要运行」。</div>
+      </div>
+      <div class="dl-card" id="card-mac">
+        <h3>Mac</h3>
+        <p>Apple 芯片的 Mac。解压后双击 <span class="mono">启动AppleFill.command</span>。Intel 芯片的 Mac 还没有单独的包。</p>
+        <a class="btn" data-dl="mac" href="#downloads">下载 Mac 包（1113 MB）</a>
+        <p class="sha" data-sha="mac" hidden></p>
+        <div class="tip">如果提示无法验证开发者：右键点击「启动AppleFill.command」，选「打开」，再确认一次。</div>
+      </div>
+    </div>
+    <p class="updated">当前版本更新于 2026/10/20。</p>
+  </section>
+
+  <!-- ===== 五步 ===== -->
+  <section>
+    <h2>使用时发生什么</h2>
+    <p class="prose mute" style="font-size:var(--fs-m);margin-bottom:var(--sp-4)">下面每一步都在你的电脑上完成。我们看不到资料、密钥和申报内容。</p>
+    <ol class="steps prose">
+      <li class="step"><span class="n">1</span><div>
+        <div class="h">先填你自己的模型</div>
+        <div class="d">填写模型地址和模型名。需要密钥就保存在本机。没有配好模型，不能抽取正式资料。扫描件和照片要使用能看图的模型。</div></div></li>
+      <li class="step"><span class="n">2</span><div>
+        <div class="h">只把这一页发给该模型</div>
+        <div class="d">PDF、Word 先在本机读出文字。扫描版 PDF 和 JPEG 先在本机变成图片，再发给你的视觉模型转写。转写结果当作这一页的原文。</div></div></li>
+      <li class="step"><span class="n">3</span><div>
+        <div class="h">对不上原文的值不保留</div>
+        <div class="d">抄下来的值必须带出处：哪一份文件、第几页、原文那一句。这句话必须在该页里，值必须能从这句话得到。对不上就留空。两处资料不一致就标成冲突，值留空，每个候选各自带着出处。</div></div></li>
+      <li class="step"><span class="n">4</span><div>
+        <div class="h">你先登录，再一页一页填</div>
+        <div class="d">你在打开的窗口里自己登录，再自己翻页。看到新的一页，点「抽出并填写」。程序只填这一页看得见的格子，不翻页，也不点提交。读回不一致的留空。</div></div></li>
+      <li class="step"><span class="n">5</span><div>
+        <div class="h">你补空格，你来提交</div>
+        <div class="d">登录、验证码、短信，以及每次刷新编号都会变的格子，程序留空。右边会标出这一页填了几项、哪些留空。你补完并核对后，自己点击提交。</div></div></li>
+    </ol>
+  </section>
+
+  <!-- ===== 由你完成 ===== -->
+  <section id="todo">
+    <h2>需要你自己完成的事</h2>
+    <div class="todo">
+      <div><div class="h">模型与密钥</div><div class="d">向你单位允许的服务申请接口。地址、模型名和密钥只放在这台电脑上，不要贴进聊天软件。</div></div>
+      <div><div class="h">登录和验证</div><div class="d">账号、密码、验证码、短信验证由你在申报网站上完成。程序不收集这些内容。</div></div>
+      <div><div class="h">留空的格子</div><div class="d">没有出处、互相冲突、读不回、或控件编号不稳定的项目，都留在页面上给你手填。</div></div>
+      <div><div class="h">核对和提交</div><div class="d">对照出处和原页图片。推断出的英文名称、产品类别、产品简介要你确认。提交按钮由你点击。</div></div>
+    </div>
+  </section>
+
+  <!-- ===== 风险：按严重程度排序，第一条默认展开 ===== -->
+  <section id="risks">
+    <h2>提交前请逐项看过</h2>
+    <p class="prose mute" style="font-size:var(--fs-m);margin-bottom:var(--sp-3)">这些情况程序不会替你消除。</p>
+
+    <details open>
+      <summary><span class="dot amber"></span><span class="ttl">资料会到达你填写的模型</span><span class="one">页面文字、扫描页图片会发给那个地址，该地址的运营方能看到内容。</span></summary>
+      <div class="more">我们的服务器不接收这些内容。地址若是公有云，资料就离开了你的网络。保密单位请使用本单位允许的内网或已签约接口。</div>
+    </details>
+    <details>
+      <summary><span class="dot amber"></span><span class="ttl">看图模型可能认错字</span><span class="one">扫描件和照片的出处核对，对着的是转写出来的文字。</span></summary>
+      <div class="more">模型把「220V」看成别的字时，核对仍可能通过。核对页会同时给出页码、原句和那一页的图，请你对照。</div>
+    </details>
+    <details>
+      <summary><span class="dot amber"></span><span class="ttl">纯文字模型读不了扫描件</span><span class="one">不能看图的模型收不到字。</span></summary>
+      <div class="more">这类文件会没有可用原文，对应字段留空。</div>
+    </details>
+    <details>
+      <summary><span class="dot amber"></span><span class="ttl">推断不是原文</span><span class="one">英文名称、产品类别、产品简介可以标成推断。</span></summary>
+      <div class="more">它们没有伪装成引用。未经你确认，不能当作已核对的事实。</div>
+    </details>
+    <details>
+      <summary><span class="dot amber"></span><span class="ttl">网页结构可能对不上</span><span class="one">程序只填当前看得见、并且读回一致的格子。</span></summary>
+      <div class="more">你自己翻到下一页，再点一次。门户改版、验证码、动态编号会留空，由你在页面上补完。</div>
+    </details>
+    <details>
+      <summary><span class="dot amber"></span><span class="ttl">网站可能限制自动填写</span><span class="one">请确认你有权使用该账号，并且这种填写方式符合该网站的规则。</span></summary>
+      <div class="more">程序按你打开的网址填写当前这一页，不翻页，也不点提交。</div>
+    </details>
+  </section>
+
+  <!-- ===== 责任边界：必须存在，但默认收起 ===== -->
+  <section id="bounds" style="padding-top:var(--sp-6)">
+    <details>
+      <summary class="plain-sum"><span class="ttl">责任边界</span></summary>
+      <ul class="bounds">
+        <li>本程序是安装在你电脑上的填写辅助，不代理申报，不构成法律、合规或审计意见，也不承诺审核通过。</li>
+        <li>本程序的提供者不接收你的资料、密钥、页面内容和申报结果，也不代你保管账号。</li>
+        <li>程序不编造缺少出处的值，不点击提交，也不代替你勾选「内容真实有效」一类声明。</li>
+        <li>不保证每一个网站都能自动填完，不保证模型转写、引用或自动步骤始终正确。</li>
+        <li>你核对并自行提交后，申报内容、账号使用以及由此产生的后果，由你承担。</li>
+        <li>因资料本身有误、模型误读、你修改了内容，或你自行提交，而产生的损失，本程序的提供者不承担责任。</li>
+      </ul>
+    </details>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Apple Fill 在本机运行。<a href="#practice" id="practice-link">练习申报页</a>是另一份页面，只用来确认填写会停在提交之前。</p>
+  </div>
+</footer>
+
+<script>
+  /* ====== 发布时只改这里 ======
+     win / mac：安装包的真实下载地址。留空时按钮会回到下载区。
+     sha：SHA-256 校验值，留空则不显示。
+     practice：练习申报页地址，留空时该链接指向页面顶部。 */
+  var CONFIG = {
+    url:  {
+      win: "https://github.com/renjianfj163/apple-fill/releases/download/dev-build/AppleFill-Windows-x64.zip",
+      mac: "https://github.com/renjianfj163/apple-fill/releases/download/dev-build/AppleFill-Mac-AppleSilicon.zip"
+    },
+    sha:  {
+      win: "2c99984a63a09b518c82641fcf2369f88d2106c6efd00ce2fe3502fe949f807c",
+      mac: "2de6cf0af9f8c4558f15a892b836073fed19b3649a8a7ea8bb9919ec19111447"
+    },
+    practice: ""
+  };
+
+  (function () {
+    var ua = navigator.userAgent || "";
+    var touchMac = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;   // iPad 伪装成 Mac
+    var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || touchMac;
+    var os = isMobile ? "mobile" : /Windows/.test(ua) ? "win" : /Macintosh|Mac OS X/.test(ua) ? "mac" : "unknown";
+    if (isMobile) document.body.classList.add("is-mobile");
+
+    function href(k) { return CONFIG.url[k] || "#downloads"; }
+
+    // 下载区两个按钮 + SHA
+    ["win", "mac"].forEach(function (k) {
+      var a = document.querySelector('[data-dl="' + k + '"]');
+      if (a) a.href = href(k);
+      var s = document.querySelector('[data-sha="' + k + '"]');
+      if (s && CONFIG.sha[k]) { s.hidden = false; s.innerHTML = "SHA-256：<span class='mono'></span>"; s.firstElementChild.textContent = CONFIG.sha[k]; }
+    });
+
+    // 首屏只给一个按钮
+    var cta = document.getElementById("cta");
+    var meta = document.getElementById("cta-meta");
+    var alt = document.getElementById("cta-alt");
+    var info = {
+      win: { label: "下载 Windows 版", meta: "64 位 Windows 10 或更新版本 · 1043 MB · 解压后双击「启动AppleFill.bat」",
+             altText: "需要 Mac 版？", altKey: "mac" },
+      mac: { label: "下载 Mac 版", meta: "Apple 芯片的 Mac · 1113 MB · 解压后双击「启动AppleFill.command」",
+             altText: "需要 Windows 版？", altKey: "win" }
     };
-    fetch("https://api.github.com/repos/renjianfj163/apple-fill/releases/tags/dev-build")
-      .then((response) => response.ok ? response.json() : null)
-      .then((release) => {
-        const assets = new Map((release && release.assets || []).map((asset) => [asset.name, asset]));
-        const ready = Object.entries(downloads).filter(([name]) => assets.has(name));
-        if (!ready.length) {
-          releaseStatus.textContent = "开发包还在第一次构建。构建完成后，这两个按钮会指向最新的 Windows 和 Mac 包。";
-          Object.values(downloads).forEach((link) => { link.setAttribute("aria-disabled", "true"); });
-          return;
-        }
-        const updated = ready.map(([name]) => assets.get(name).updated_at).sort().at(-1);
-        const when = new Date(updated).toLocaleString("zh-CN", { hour12: false });
-        releaseStatus.textContent = "当前开发包更新于 " + when + "。以后每次 dev 更新，这里下载到的都是新包。";
-        ready.forEach(([name, link]) => {
-          const asset = assets.get(name);
-          const size = Math.max(1, Math.round(asset.size / 1024 / 1024));
-          link.textContent = link.textContent + "（" + size + " MB）";
-        });
-      })
-      .catch(() => {
-        releaseStatus.textContent = "暂时没有连上发布页。可以稍后再打开这个页面。";
-      });
-  </script>
+    if (info[os]) {
+      cta.textContent = info[os].label;
+      cta.href = href(os);
+      meta.textContent = info[os].meta;
+      var l = document.createElement("a");
+      l.href = href(info[os].altKey);
+      l.textContent = info[os].altText;
+      alt.appendChild(l);
+    } else if (!isMobile) {
+      cta.textContent = "选择下载版本";
+      cta.href = "#downloads";
+      meta.textContent = "Windows 64 位 或 Apple 芯片的 Mac";
+    }
+
+    // 手机：复制链接
+    var copy = document.getElementById("copy-link");
+    if (copy) copy.addEventListener("click", function () {
+      var done = function () { copy.textContent = "已复制"; setTimeout(function () { copy.textContent = "复制本页链接"; }, 2000); };
+      if (navigator.clipboard) navigator.clipboard.writeText(location.href.split("#")[0]).then(done);
+    });
+
+    // 练习页
+    var p = document.getElementById("practice-link");
+    if (p) p.href = CONFIG.practice || "#top";
+  })();
+</script>
 </body>
 </html>

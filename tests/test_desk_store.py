@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from apple_fill.desk_store import import_adapter, list_adapters, match_host, panel_summary, read_brief
+from apple_fill.desk_store import import_adapter, list_adapters, load_run_product, match_host, panel_summary, read_brief
 from apple_fill.schema_io import SchemaError
 
 
@@ -75,3 +75,14 @@ def test_panel_summary_counts_sourced_and_blanks():
     assert reasons["型号"] == "两份文件不一致"
     assert reasons["品牌"] == "资料里没有"
     assert reasons["额定电压"] == "资料里没有"
+
+
+def test_load_run_product_stays_inside_runs(tmp_path: Path):
+    run = tmp_path / "runs" / "case"
+    run.mkdir(parents=True)
+    (run / "product.json").write_text('{"fields": {}}', encoding="utf-8")
+    assert load_run_product(tmp_path, "runs/case")["fields"] == {}
+    with pytest.raises(ValueError):
+        load_run_product(tmp_path, "runs/../case")
+    with pytest.raises(ValueError):
+        load_run_product(tmp_path, "adapters/case")
